@@ -1,0 +1,9 @@
+dashboard/
+test/
+docker-compose*.yml
+.env
+.env.*
+*.log
+logs
+data/
+CHANGELOG.md
