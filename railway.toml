@@ -1,0 +1,20 @@
+# Chambeabot — root service defaults.
+#
+# This file is read by Railway when `railway up` runs at this directory.
+# It tells Railway to use the multi-stage Dockerfile under docker/.
+#
+# Per-service overrides (worker command, openwa image, etc.) are applied
+# via `railway environment edit --service-config <svc> ...` after each
+# service is added to the project.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+
+[deploy]
+startCommand = "bundle exec rails s -p $PORT -e production -b 0.0.0.0"
+preDeployCommand = "bundle exec rails db:chatwoot_prepare"
+healthcheckPath = "/api"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
