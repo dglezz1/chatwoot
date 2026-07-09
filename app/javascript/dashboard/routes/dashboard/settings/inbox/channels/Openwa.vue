@@ -55,7 +55,17 @@ export default {
 
       this.isWorking = true;
       try {
-        const session = await this.createOpenwaSession(this.inboxName);
+        // OpenWA enforces /^[a-zA-Z0-9-]+$/, 3–50 chars on session names.
+        // Sanitize the inbox name before forwarding.
+        const safeSessionName =
+          (this.inboxName || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-zA-Z0-9-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 50) || `openwa-${Date.now()}`;
+
+        const session = await this.createOpenwaSession(safeSessionName);
         if (!session?.id) {
           throw new Error('OpenWA did not return a session_id');
         }
