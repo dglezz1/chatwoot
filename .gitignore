@@ -114,3 +114,8 @@ tmp/cache/
 log/
 coverage/
 vendor/bundle/
+
+# openwa build outputs
+openwa/dist/
+openwa/data/
+data/
