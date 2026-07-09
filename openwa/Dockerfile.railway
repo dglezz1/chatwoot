@@ -1,11 +1,10 @@
-# OpenWA Dockerfile for Railway
+# OpenWA Dockerfile for Railway (chatwoot-root build context)
 #
-# This is a single-stage build (not multi-stage) optimized for Railway
-# where build happens once and the resulting image runs. The original
-# OpenWA Dockerfile is multi-stage with --platform=$BUILDPLATFORM which
-# Railway doesn't need (Railway builds natively for the deploy target).
+# Railway provides the entire chatwoot repo as build context. We copy
+# what we need from /openwa/ subdir into /app inside the image.
 #
-# Build context: this directory (openwa/)
+# This file is referenced as `dockerfilePath = "openwa/Dockerfile.railway"`
+# with `source.rootDirectory = null` (i.e. context = chatwoot repo root).
 
 FROM node:22-slim
 
@@ -25,16 +24,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR $APP_DIR
 
-COPY package.json package-lock.json ./
+# Copy only the openwa/ subdir contents from the chatwoot build context.
+COPY openwa/package.json openwa/package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+COPY openwa/ ./
 
-RUN npm run build
-
-# OpenWA seeds an admin API key on first run and writes it to /app/data/.api-key
-# Persist that directory as a Railway volume.
+# OpenWA seeds an admin API key on first run; persist the data dir as a Railway volume.
 RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine
+
+# Build the TypeScript source after npm ci (so node_modules is present for the build).
+RUN npm run build
 
 # Defaults — Railway will override these via service variables.
 ENV API_KEY=dev-admin-key \
@@ -42,11 +42,10 @@ ENV API_KEY=dev-admin-key \
 
 EXPOSE 2785
 
-# dumb-init for clean SIGTERM (Railway shutdown); gosu drops to non-root.
-# The official entrypoint fixes volume perms and execs `node dist/main`.
-COPY --chown=root:root docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# dumb-init for clean SIGTERM (Railway shutdown); the official entrypoint fixes
+# volume perms and execs `node dist/main`.
+COPY openwa/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER root
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "dist/main"]
