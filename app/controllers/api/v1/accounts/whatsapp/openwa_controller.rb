@@ -74,7 +74,12 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
       channel.save!(validate: false)
     end
 
-    chatwoot_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:3000')}/webhooks/openwa/#{session_id}"
+    # Webhooks are delivered by OpenWA, which runs in the same private network as
+    # Chatwoot. Prefer an internal URL so OpenWA's SSRF guard sees a whitelisted
+    # hostname; fall back to FRONTEND_URL (public) only when no internal host is
+    # configured (dev / non-Railway deploys).
+    chatwoot_host = ENV['OPENWA_WEBHOOK_HOST'].presence || ENV['FRONTEND_URL'].presence || 'http://localhost:3000'
+    chatwoot_url = "#{chatwoot_host}/webhooks/openwa/#{session_id}"
     body = {
       url: chatwoot_url,
       events: %w[message.received message.sent message.ack message.revoked session.status],
