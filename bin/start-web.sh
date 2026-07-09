@@ -1,10 +1,12 @@
 #!/bin/bash
-# Chambeabot web entrypoint — expands PORT/RAILS_ENV env vars and
-# boots the Rails server. Used on Railway where startCommand is invoked
-# without a login shell that would do shell expansion.
 set -e
-: "${PORT:=3000}"
-: "${RAILS_ENV:=production}"
-export PORT RAILS_ENV
-echo "[start-web.sh] PORT=$PORT RAILS_ENV=$RAILS_ENV"
-exec bundle exec rails server -p "$PORT" -e "$RAILS_ENV" -b 0.0.0.0
+
+# Migrate + seed if first boot
+bundle exec rails db:chatwoot_prepare
+
+# Enable signup so the first admin can register
+bundle exec rails runner 'InstallationConfig.find_or_create_by(name: "ENABLE_ACCOUNT_SIGNUP").update(value: "true"); puts "signup ENABLED"' || true
+
+# Start Rails on Railway's $PORT (default 3000)
+PORT=${PORT:-3000}
+exec bundle exec rails server -p "$PORT" -e production -b 0.0.0.0
