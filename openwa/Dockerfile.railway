@@ -23,14 +23,13 @@ RUN useradd --create-home --uid 1001 openwa
 
 WORKDIR $APP_DIR
 
-# Copy config files needed for build.
-COPY openwa/package.json openwa/package-lock.json openwa/tsconfig.json openwa/tsconfig.build.json openwa/nest-cli.json ./
-
-# Install all deps including dev (NODE_ENV not yet production) and run the build.
-RUN npm ci && npm run build
-
-# Copy source + everything else.
+# Copy full openwa/ source first. Then install deps and build.
+# .dockerignore excludes dashboard/, test/, node_modules — those get installed via npm ci.
 COPY openwa/ ./
+
+# Install ALL deps (including dev: @nestjs/cli, typescript) needed for build.
+# NODE_ENV not yet production, so dev deps install correctly.
+RUN npm ci && npm run build && ls -la dist/main* && cat dist/main.js | head -3
 
 # Persist data dirs as Railway volumes.
 RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine \
@@ -49,4 +48,4 @@ COPY openwa/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
-CMD ["node", "dist/main.js"] 
+CMD ["node", "dist/main.js"]
