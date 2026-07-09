@@ -11,8 +11,13 @@ module Whatsapp
       SESSION_BASE = '/api/sessions'.freeze
 
       def initialize(api_base_url:, api_key:, session_id:)
-        @api_base_url = api_base_url.to_s.sub(%r{/\z}, '')
-        @api_key = api_key
+        # Falls back to OPENWA_API_BASE_URL / OPENWA_API_KEY env vars when
+        # the channel's provider_config doesn't carry them — this is what
+        # the dashboard inbox-creation flow does (it only persists
+        # session_id; the API base URL + key are a deployment-wide setting).
+        base = api_base_url.to_s.empty? ? ENV.fetch('OPENWA_API_BASE_URL', 'http://openwa:2785') : api_base_url
+        @api_base_url = base.to_s.sub(%r{/\z}, '')
+        @api_key = (api_key.to_s.empty? ? ENV['OPENWA_API_KEY'] : api_key).to_s
         @session_id = session_id
       end
 
