@@ -248,7 +248,9 @@
           "WHATSAPP_CLOUD": "WhatsApp Cloud",
           "WHATSAPP_CLOUD_DESC": "Quick setup through Meta",
           "TWILIO_DESC": "Connect via Twilio credentials",
-          "360_DIALOG": "360Dialog"
+          "360_DIALOG": "360Dialog",
+          "OPENWA": "OpenWA (self-hosted WhatsApp)",
+          "OPENWA_DESC": "Pair your own phone via QR — no Meta setup, no business account required. Hosted OpenWA must be reachable from this Chatwoot."
         },
         "SELECT_PROVIDER": {
           "TITLE": "Select your API provider",
@@ -292,6 +294,9 @@
           "WEBHOOK_VERIFICATION_TOKEN": "Webhook Verification Token"
         },
         "SUBMIT_BUTTON": "Create WhatsApp Channel",
+        "OPENWA": {
+          "WEBHOOK_WARNING": "Inbox created, but webhook registration failed. Open the inbox from Captain → Assistant → Inboxes → Live Ops to finish setup."
+        },
         "EMBEDDED_SIGNUP": {
           "TITLE": "Quick setup with Meta",
           "DESC": "Use the WhatsApp Embedded Signup flow to quickly connect new numbers. You will be redirected to Meta to log into your WhatsApp Business account. Having admin access will help make the setup smooth and easy.",

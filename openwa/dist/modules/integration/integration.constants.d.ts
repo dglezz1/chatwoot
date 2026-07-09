@@ -1,0 +1,3 @@
+export declare const INGRESS_MAX_BODY_BYTES_DEFAULT = 262144;
+export declare const INGRESS_REPLAY_TOLERANCE_SEC_DEFAULT = 300;
+export declare const INGRESS_DISPATCH_TIMEOUT_MS = 5000;
