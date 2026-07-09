@@ -1,17 +1,15 @@
 # Landing page — Chambeabot
 #
-# Serves static index.html via nginx. Listens on port 3000 (Railway's $PORT or default).
-#
+# Serves static index.html via nginx. Uses ARG PORT (defaults 3000) for the listen port.
 # Build context: this directory (landing/), rootDirectory = "/landing".
 
 FROM nginx:alpine
 
-# Read $PORT from Railway (defaults to 3000)
-ENV LISTEN_PORT=${PORT:-3000}
+ARG PORT=3000
 
-# Replace the listen directives in the default nginx config with our dynamic port.
-RUN sed -i "s/listen       80;/listen       ${LISTEN_PORT};/g" /etc/nginx/conf.d/default.conf \
-    && sed -i "s/listen  \[::\]:80;/listen  \[::\]:${LISTEN_PORT};/g" /etc/nginx/conf.d/default.conf
+# Replace the listen directives with our PORT arg.
+RUN sed -i "s/listen       80;/listen       ${PORT};/g" /etc/nginx/conf.d/default.conf \
+    && sed -i "s/listen  \[::\]:80;/listen  \[::\]:${PORT};/g" /etc/nginx/conf.d/default.conf
 
 COPY index.html /usr/share/nginx/html/index.html
 
