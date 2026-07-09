@@ -1,15 +1,10 @@
 # Chambeabot — root service defaults.
 #
-# This file is read by Railway when `railway up` runs at this directory.
-# It tells Railway to use the multi-stage Dockerfile under docker/.
-#
-# Per-service overrides (worker command, openwa image, etc.) are applied
-# via `railway environment edit --service-config <svc> ...` after each
-# service is added to the project.
-
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "docker/Dockerfile"
+# Per-service overrides are applied via the per-service config in
+# the Railway dashboard / API. The [build] section is intentionally
+# left out so per-service config (dockerfilePath, builder) wins for
+# crm-web (docker/Dockerfile), crm-worker (docker/Dockerfile),
+# crm-openwa (openwa/Dockerfile.railway), crm-landing (RAILPACK).
 
 # startCommand is intentionally left out so Railway uses the Procfile's
 # `web:` and `worker:` lines (which hardcode PORT=3000). A literal
