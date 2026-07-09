@@ -49,4 +49,4 @@ COPY openwa/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"] 
