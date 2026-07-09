@@ -104,10 +104,13 @@ export default {
     },
 
     async createOpenwaSession(name) {
-      // The OpenWA endpoint requires admin/agent auth headers; the dashboard axios interceptor
-      // injects them automatically.
-      const { default: axios } = await import('axios');
-      const { data } = await axios.post(
+      // The OpenWA endpoint requires admin/agent auth headers. We use the
+      // dashboard's configured axios (window.axios) which has the Devise
+      // access-token headers injected by APIHelper + interceptors that handle
+      // 401 → token refresh. Bare `import axios from 'axios'` skips all of
+      // that, hence the original 401.
+      const api = window.axios;
+      const { data } = await api.post(
         `/api/v1/accounts/${this.$route.params.accountId}/whatsapp/openwa/sessions`,
         { name }
       );
@@ -115,9 +118,9 @@ export default {
     },
 
     async startOpenwaSession(sessionId) {
-      const { default: axios } = await import('axios');
+      const api = window.axios;
       try {
-        await axios.post(
+        await api.post(
           `/api/v1/accounts/${this.$route.params.accountId}/whatsapp/openwa/sessions/${sessionId}/start`
         );
       } catch (e) {
@@ -126,8 +129,8 @@ export default {
     },
 
     async registerWebhook(sessionId) {
-      const { default: axios } = await import('axios');
-      await axios.post(
+      const api = window.axios;
+      await api.post(
         `/api/v1/accounts/${this.$route.params.accountId}/whatsapp/openwa/sessions/${sessionId}/register_webhook`,
         { id: sessionId }
       );
