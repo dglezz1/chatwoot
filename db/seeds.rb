@@ -95,3 +95,9 @@ unless Rails.env.production?
 
   CannedResponse.create!(account: account, short_code: 'start', content: 'Hello welcome to chatwoot.')
 end
+
+# Auto-confirm all unconfirmed users (for Railway deploy without SMTP)
+User.where(confirmed_at: nil).find_each do |user|
+  user.update!(confirmed_at: Time.current, confirmation_sent_at: Time.current)
+  puts "Auto-confirmed: #{user.email}"
+end
