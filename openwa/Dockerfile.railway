@@ -11,9 +11,6 @@ ENV APP_DIR=/app \
     WA_DISABLE_SPINS=true \
     WA_POPUP=true
 
-# IMPORTANT: NODE_ENV=production is set LATER (after npm ci + build) because npm skips
-# devDependencies when NODE_ENV=production, which would skip @nestjs/cli needed for `nest build`.
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium fonts-liberation libnss3 libatk1.0-0 libatk-bridge2.0-0 \
       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
@@ -23,20 +20,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR $APP_DIR
 
-COPY openwa/package.json openwa/package-lock.json ./
+# Copy config files needed for build + install all deps (including dev: @nestjs/cli, typescript).
+COPY openwa/package.json openwa/package-lock.json openwa/tsconfig.json openwa/tsconfig.build.json openwa/nest-cli.json ./
 
-# Install ALL deps including dev (@nestjs/cli, typescript) needed for the build.
-# NODE_ENV is NOT set to production yet, so dev deps will be installed.
+# NODE_ENV is not yet production, so dev deps install correctly.
 RUN npm ci && npm run build
 
-# Now copy full source (already-built dist/ is preserved) — using .dockerignore exclusions for 
-# node_modules, dashboard/, etc.
+# Now copy source + everything else. Already-built dist/ is preserved.
 COPY openwa/ ./
 
 # Persist data dirs as Railway volumes.
 RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine
 
-# Now switch to production mode and prune dev deps to keep image small.
+# Switch to production mode and prune dev deps to keep image small.
 ENV NODE_ENV=production
 RUN npm prune --omit=dev
 
