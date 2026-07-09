@@ -5,12 +5,14 @@
 
 FROM node:22-slim
 
-ENV NODE_ENV=production \
-    APP_DIR=/app \
+ENV APP_DIR=/app \
     WA_EXECUTABLE_PATH=/usr/bin/google-chrome \
     WA_USE_CHROME=true \
     WA_DISABLE_SPINS=true \
     WA_POPUP=true
+
+# IMPORTANT: NODE_ENV=production is set LATER (after npm ci + build) because npm skips
+# devDependencies when NODE_ENV=production, which would skip @nestjs/cli needed for `nest build`.
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium fonts-liberation libnss3 libatk1.0-0 libatk-bridge2.0-0 \
@@ -21,20 +23,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR $APP_DIR
 
-# Install ALL deps (including dev: @nestjs/cli, typescript) for the build step.
-# After build, prune to prod-only to keep image small.
 COPY openwa/package.json openwa/package-lock.json ./
-RUN npm ci && npm run build && npm prune --omit=dev
 
-# Copy source + remaining files into /app
+# Install ALL deps including dev (@nestjs/cli, typescript) needed for the build.
+# NODE_ENV is NOT set to production yet, so dev deps will be installed.
+RUN npm ci && npm run build
+
+# Now copy full source (already-built dist/ is preserved) — using .dockerignore exclusions for 
+# node_modules, dashboard/, etc.
 COPY openwa/ ./
 
-# Build artifacts in dist/ were generated above; this second npm run build is now a no-op
-# but kept for clarity if image is rebuilt without the cached npm ci step.
-RUN [ -d dist ] || npm run build
-
-# OpenWA seeds an admin API key; persist the data dir as a Railway volume.
+# Persist data dirs as Railway volumes.
 RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine
+
+# Now switch to production mode and prune dev deps to keep image small.
+ENV NODE_ENV=production
+RUN npm prune --omit=dev
 
 ENV API_KEY=dev-admin-key \
     PORT=2785
@@ -46,4 +50,3 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "dist/main"]
-
