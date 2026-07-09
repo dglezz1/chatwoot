@@ -14,25 +14,29 @@ ENV APP_DIR=/app \
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium fonts-liberation libnss3 libatk1.0-0 libatk-bridge2.0-0 \
       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-      libgbm1 libpango-1.0-0 libcairo2 libasound2 dumb-init ca-certificates \
+      libgbm1 libpango-1.0-0 libcairo2 libasound2 dumb-init ca-certificates gosu \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+# Create the non-root 'openwa' user that the official entrypoint expects.
+RUN useradd --create-home --uid 1000 openwa
+
 WORKDIR $APP_DIR
 
-# Copy config files needed for build + install all deps (including dev: @nestjs/cli, typescript).
+# Copy config files needed for build.
 COPY openwa/package.json openwa/package-lock.json openwa/tsconfig.json openwa/tsconfig.build.json openwa/nest-cli.json ./
 
-# NODE_ENV is not yet production, so dev deps install correctly.
+# Install all deps including dev (NODE_ENV not yet production) and run the build.
 RUN npm ci && npm run build
 
-# Now copy source + everything else. Already-built dist/ is preserved.
+# Copy source + everything else.
 COPY openwa/ ./
 
 # Persist data dirs as Railway volumes.
-RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine
+RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine \
+    && chown -R openwa:openwa /app/data
 
-# Switch to production mode and prune dev deps to keep image small.
+# Switch to production mode and prune dev deps.
 ENV NODE_ENV=production
 RUN npm prune --omit=dev
 
