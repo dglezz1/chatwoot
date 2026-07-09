@@ -765,7 +765,8 @@
         "SOURCE": {
           "ALL": "All sources",
           "WEB": "Web pages",
-          "PDF": "PDFs"
+          "PDF": "PDFs",
+          "TEXT": "Text notes"
         },
         "STATUS": {
           "ANY": "Any status",
@@ -810,7 +811,8 @@
         "TYPE": {
           "LABEL": "Document Type",
           "URL": "URL",
-          "PDF": "PDF File"
+          "PDF": "PDF File",
+          "TEXT": "Text note"
         },
         "URL": {
           "LABEL": "URL",
@@ -824,6 +826,12 @@
           "HELP_TEXT": "Maximum file size: 10MB",
           "INVALID_TYPE": "Please select a valid PDF file",
           "TOO_LARGE": "File size exceeds 10MB limit"
+        },
+        "TEXT": {
+          "LABEL": "Text content",
+          "PLACEHOLDER": "Paste FAQs, runbooks, policies, or any text content the assistant should know.",
+          "HELP_TEXT": "Inline text becomes available immediately, no crawl needed.",
+          "ERROR": "Please provide some text content"
         },
         "NAME": {
           "LABEL": "Document Name (Optional)",
@@ -1074,7 +1082,25 @@
       "HEADER": "Connected Inboxes",
       "ADD_NEW": "Connect a new inbox",
       "OPTIONS": {
-        "DISCONNECT": "Disconnect"
+        "DISCONNECT": "Disconnect",
+        "SETTINGS": "Bot settings",
+        "LIVE_OPS": "WhatsApp session (QR)"
+      },
+      "SETTINGS": {
+        "TITLE": "Bot configuration",
+        "SAVE": "Save",
+        "CANCEL": "Cancel",
+        "MODE_TITLE": "Auto-reply mode",
+        "DELAY_TITLE": "Response delay",
+        "DELAY_DESCRIPTION": "Random delay (in seconds) before the bot replies. Used to make the bot feel human and avoid WhatsApp bot detection. Recommended: 15-45s.",
+        "DEBOUNCE_TITLE": "Debounce window",
+        "DEBOUNCE_DESCRIPTION": "How long the bot waits for additional messages from the same contact before responding. Groups multiple rapid messages into one reply to save tokens.",
+        "WELCOME_TITLE": "Welcome message override",
+        "WELCOME_DESCRIPTION": "Sent on first contact from each new conversation. Leave empty to use the assistant's default welcome message.",
+        "AWAY_TITLE": "Away message",
+        "AWAY_DESCRIPTION": "Sent when the contact messages outside business hours. Leave empty to disable.",
+        "HANDOFF_TITLE": "Human handoff keywords",
+        "HANDOFF_DESCRIPTION": "If the contact writes any of these words, the bot pauses auto-replies and a human agent takes over the conversation."
       },
       "DELETE": {
         "TITLE": "Are you sure to disconnect the inbox?",
@@ -1100,6 +1126,15 @@
         "TITLE": "No Connected Inboxes",
         "SUBTITLE": "Connecting an inbox allows the assistant to handle initial questions from your customers before transferring them to you."
       }
+    },
+    "OPENWA_LIVE_OPS": {
+      "TITLE": "OpenWA live session",
+      "REFRESH": "Refresh",
+      "CONNECT": "Connect / show QR",
+      "DISCONNECT": "Disconnect",
+      "RESTART_SESSION": "Re-init session",
+      "QR_INSTRUCTIONS": "Open WhatsApp on your phone → Linked Devices → Link a Device → scan this QR.",
+      "CONNECTED_MESSAGE": "WhatsApp is connected"
     }
   }
 }

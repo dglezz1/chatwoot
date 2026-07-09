@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Captain Architecture — Graphify Map</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: #0f1116; color: #e1e2e8; padding: 30px; max-width: 1600px; margin: 0 auto; }
+  h1 { color: #62a5ff; font-weight: 600; font-size: 28px; }
+  h2 { color: #62a5ff; margin-top: 32px; border-bottom: 1px solid #2a2d36; padding-bottom: 8px; }
+  h3 { color: #c5c8d2; margin-top: 20px; font-weight: 500; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-top: 16px; }
+  .box { background: #16181f; border: 1px solid #2a2d36; border-radius: 8px; padding: 16px; }
+  .box h3 { margin: 0 0 8px 0; font-size: 14px; color: #62a5ff; font-family: ui-monospace, monospace; }
+  .box p { font-size: 13px; color: #b5b8c2; line-height: 1.5; margin: 4px 0; }
+  .arrow { color: #ffa07a; }
+  .red { background: #2a1518; border-color: #d63b54; }
+  .red h3 { color: #ff8290; }
+  .green { background: #15281b; border-color: #4db07a; }
+  .green h3 { color: #62dd99; }
+  .amber { background: #2a2214; border-color: #d6a445; }
+  .amber h3 { color: #f7c668; }
+  code { background: #0c0e13; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #ffa07a; font-family: ui-monospace, monospace; }
+  .file { font-family: ui-monospace, monospace; font-size: 11px; color: #797d8a; }
+  pre { background: #0c0e13; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+  .hot { background: linear-gradient(135deg, #2a1518, #16181f); border-color: #d63b54; }
+  .hot h3::before { content: '\\26A0 '; }
+  .safe { background: linear-gradient(135deg, #15281b, #16181f); border-color: #4db07a; }
+  .safe h3::before { content: '\\2713 '; }
+  ul { font-size: 13px; line-height: 1.5; }
+  li { margin-bottom: 4px; }
+  .meta { background: #1c1f28; padding: 12px; border-radius: 6px; font-size: 12px; color: #8a8d97; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Captain — Flujo completo</h1>
+<p style="color:#8a8d97; margin-top: -10px;">Mapeo guiado por graphify · 328k nodos · 1.08M edges · sin clusters</p>
+
+<h2>🔍 Arquitectura de alto nivel</h2>
+<p>Cada cuenta tiene <strong>1+ Captain::Assistant</strong>. Cada assistant tiene documentos, respuestas, scenarios, custom tools. La config per-inbox vive en <code>captain_inboxes</code> (join row).</p>
+
+<div class="grid">
+  <div class="box">
+    <h3>Captain::Assistant</h3>
+    <p>El agente. Tiene model, prompt, guardrails, scenarios, custom_tools, products.</p>
+    <p class="file">enterprise/app/models/captain/assistant.rb</p>
+  </div>
+  <div class="box">
+    <h3>CaptainInbox</h3>
+    <p>Join row (inbox × assistant). Lleva config jsonb: mode, delays, welcome, handoff, block_list.</p>
+    <p class="file">enterprise/app/models/captain_inbox.rb</p>
+  </div>
+  <div class="box">
+    <h3>Captain::Document</h3>
+    <p>Entrenamiento (URL/PDF/texto). Crawled, procesado, embedido para RAG.</p>
+    <p class="file">enterprise/app/models/captain/document.rb</p>
+  </div>
+  <div class="box">
+    <h3>Captain::Scenario</h3>
+    <p>Sub-agentes especiales (handoff detection). Se registran como tools adicionales.</p>
+  </div>
+  <div class="box">
+    <h3>Captain::CustomTool</h3>
+    <p>HTTP tools personalizados por cuenta. El agent los puede llamar.</p>
+  </div>
+  <div class="box">
+    <h3>Tools</h3>
+    <p>9 tools built-in: handoff, resolve, FAQ lookup, add note, add label, add private note, update priority, http, copilot-search.</p>
+  </div>
+</div>
+
+<h2>📥 3 paths que disparan Captain desde un mensaje entrante</h2>
+
+<div class="hot">
+<h3>Path A · Hook path (la ruta histórica)</h3>
+<p style="font-size:13px;color:#b5b8c2;">
+Webhook → <strong>Message#execute_message_template_hooks</strong> → <code>MessageTemplates::HookExecutionService#trigger_templates</code>:</p>
+<ul>
+  <li><span class="arrow">→</span> super() ejecuta greeting / OOF / email-collect (OSS templates)</li>
+  <li><span class="arrow">→</span> <code>captain_safe_to_respond?</code> valida: pending + incoming + !@g.us + captain_assistant + captain_active</li>
+  <li><span class="arrow">→</span> <strong>schedule_captain_response</strong> encola <code>ResponseBuilderJob</code></li>
+  <li><span class="arrow">→</span> el job bifurca: <strong>V1</strong> (<code>AssistantChatService</code> one-shot) o <strong>V2</strong> (<code>AgentRunnerService</code> con tools)</li>
+  <li><span class="arrow">→</span> post-process: <code>ClassifierActionService</code> + <code>FalsePromiseService</code></li>
+  <li><span class="arrow">→</span> al final envía via <code>Messages::MessageBuilder</code> → <code>SendReplyJob</code> → OpenWA</li>
+</ul>
+</div>
+
+<div class="amber">
+<h3>Path B · Listener path (ruta V2 moderna, dos etapas)</h3>
+<p style="font-size:13px;color:#b5b8c2;">
+<strong>EventDispatcher</strong> (<code>message_created</code>) → <strong>CaptainListener</strong> → <code>Captain::AutoReplyJob</code> (debouncer con Redis SETNX) → <code>Captain::DelayedAutoReplyJob.set(wait: rand(15..45).seconds)</code>:</p>
+<ul>
+  <li>⏱ Debounce: múltiples mensajes del mismo contacto colapsan en 1 reply</li>
+  <li>⏱ Delay aleatorio para evitar bot-detection de WhatsApp</li>
+  <li>⏱ Después del delay, espera extra <code>debounce_window_seconds</code> (~20s) para acumular stragglers</li>
+  <li>Modo <strong>off</strong> → no-op · <strong>welcome_only</strong> → canned · <strong>ai</strong> → <code>AgentRunnerService</code></li>
+  <li>Si handoff keyword match → mándale mensaje de handoff y para (no más replies)</li>
+</ul>
+</div>
+
+<div class="box">
+<h3>Path C · Cron path (auto-resolve)</h3>
+<p style="font-size:13px;color:#b5b8c2;">
+<code>config/schedule.yml</code> cada 5 min → <code>TriggerScheduledItemsJob</code> → <code>Account::ConversationsResolutionSchedulerJob</code> → <code>Enterprise::Account::ConversationsResolutionSchedulerJob</code> → <code>Captain::InboxPendingConversationsResolutionJob</code> (one per inbox):</p>
+<ul>
+  <li>Para conversaciones idle más de 1 hora…</li>
+  <li>V2 con <code>captain_tasks</code>: LLM evalúa si está completa → resuelve o handoff</li>
+  <li>V1 / sin tasks: cierra directo con resolution_message</li>
+</ul>
+<p class="file">enterprise/app/jobs/enterprise/account/conversations_resolution_scheduler_job.rb</p>
+</div>
+
+<h2>🧠 El Agente — V1 vs V2</h2>
+
+<div class="grid">
+  <div class="box red">
+    <h3>V1 · Single-shot</h3>
+    <p><code>AssistantChatService#generate_response</code> → LLM en una sola llamada.</p>
+    <p>Post-process: <code>AssistantActionClassifierService</code> (label intent) + <code>AssistantFalsePromiseService</code> (catch "te aviso…" patterns).</p>
+    <p class="file">enterprise/app/services/captain/llm/assistant_chat_service.rb</p>
+  </div>
+  <div class="box green">
+    <h3>V2 · Tool-calling agent loop</h3>
+    <p><code>AgentRunnerService</code> usa el gem <code>agents</code> (RubyLLM). Construye un <code>Agents::Runner</code> con el assistant + cada scenario como agente, todos con tools compartidas.</p>
+    <p><code>runner.run(message, context: ..., max_turns: 100)</code> corre el loop: el LLM decide tool → ejecuta → repite hasta <code>final_answer</code>.</p>
+    <p class="file">enterprise/app/services/captain/assistant/agent_runner_service.rb</p>
+  </div>
+</div>
+
+<h2>🛠 Tools disponibles para el agente (9)</h2>
+<div class="grid">
+  <div class="box"><h3>handoff_tool</h3><p>Transfiere a humano. Llama <code>conversation.bot_handoff!</code> + emite event. Trackea handoff flag.</p></div>
+  <div class="box"><h3>resolve_conversation_tool</h3><p>Cierra la conversación si el LLM confirma resolución.</p></div>
+  <div class="box"><h3>faq_lookup_tool</h3><p>Busca en <code>Captain::Document</code> por embeddings.</p></div>
+  <div class="box"><h3>add_contact_note_tool</h3><p>Añade nota al contacto (<code>Contact#custom_attributes</code>).</p></div>
+  <div class="box"><h3>add_label_to_conversation_tool</h3><p>Aplica label.</p></div>
+  <div class="box"><h3>add_private_note_tool</h3><p>Nota privada (solo visible para agentes).</p></div>
+  <div class="box"><h3>update_priority_tool</h3><p>Cambia priority de la conversación.</p></div>
+  <div class="box"><h3>http_tool</h3><p>Generic HTTP fetch a una URL autenticada.</p></div>
+  <div class="box"><h3>custom_http_tool</h3><p>Per-account <code>Captain::CustomTool</code> registro.</p></div>
+</div>
+
+<h2>📜 Document pipeline (cron + on-demand)</h2>
+<div class="box">
+<pre>URL/PDF/text
+  └─ Captain::Documents::CrawlJob
+       └─ SinglePageFetcher.fetch!  (HTTP + parse)
+  └─ ResponseBuilderJob
+       └─ LLM summarize → Captain::Document.content (chunked)
+       └─ LLM::UpdateEmbeddingJob per chunk
+       └─ EmbeddingService (vector)
+
+Cada 24h: RecrawlAllJob re-sincroniza docs stale
+Cada N cuenta: ScheduleSyncsJob dispara PerAccountSyncJob</pre>
+</div>
+
+<h2>⚙️ Configuración & quotas</h2>
+<div class="grid">
+  <div class="box"><h3>Per-account quota</h3><p><code>Account.usage_limits[:captain][:responses][:current_available]</code> — decrementa en cada reply exitoso.</p></div>
+  <div class="box"><h3>Feature flags</h3>
+    <p><code>captain_integration</code> (V1 + V2 visible en UI), <code>captain_integration_v2</code> (tool-calling V2), <code>captain_custom_tools</code>, <code>captain_tasks</code>, <code>captain_document_auto_sync</code></p>
+  </div>
+  <div class="box"><h3>LLM endpoint</h3>
+    <p><code>InstallationConfig.CAPTAIN_OPEN_AI_ENDPOINT</code>, <code>..._MODEL</code>, <code>..._API_KEY</code>. Fallback a <code>CaptainIntegrationService::LLM_CONFIG</code>.</p>
+  </div>
+</div>
+
+<h2>🛡 Guards de seguridad que PREGUNTAN al bot</h2>
+<div class="safe">
+<h3>Guard layer · Post-fix</h3>
+<ul>
+  <li><code>captain_safe_to_respond?</code> — central allow-list (aplicada en 3 lugares: Hook, Listener, Job)</li>
+  <li>🚫 <strong>WhatsApp @g.us y @broadcast</strong> — nunca auto-reply a grupos (bug del 2026-07-03)</li>
+  <li>🚫 Mensajes privados / vacíos</li>
+  <li>🚫 Conversaciones asignadas a humano</li>
+  <li>🚫 Inbox sin <code>captain_assistant</code> o sin quota</li>
+  <li>🎯 <code>recoverable_llm_error?</code> — solo handoff en errores esperados (Faraday / Timeout / RateLimit / ContextLimit). Hard parse errors log silencioso.</li>
+</ul>
+</div>
+
+<h2>📚 Tasks del dashboard (no auto)</h2>
+<ul>
+  <li><strong>Copilot</strong> — chat de preguntas del agente al LLM</li>
+  <li><strong>Reply suggestion / Summary / Rewrite</strong> — tareas one-shot via <code>lib/captain/*_service.rb</code></li>
+  <li><strong>Label suggestion, Follow up, CSAT analysis</strong> — pre-fills para el agente</li>
+  <li><strong>Article writer / translation / Help Center curation / Widget tagline</strong> — generación de contenido</li>
+</ul>
+
+<p class="meta">Mapeado con graphify 2026-07-03 sobre <code>graph.json</code> de 312 MB. Para regenerar: <code>graphify update . --no-cluster</code>. Memory file completo en <code>~/.mavis/agents/mavis/memory/chatwoot-openwa.md</code>.</p>
+
+</body>
+</html>

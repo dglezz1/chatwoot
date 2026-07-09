@@ -10,10 +10,21 @@ class CaptainInboxes extends ApiClient {
     return axios.get(`${this.url}/${assistantId}/inboxes`);
   }
 
+  show({ assistantId, inboxId } = {}) {
+    return axios.get(`${this.url}/${assistantId}/inboxes/${inboxId}`);
+  }
+
   create(params = {}) {
     const { assistantId, inboxId } = params;
     return axios.post(`${this.url}/${assistantId}/inboxes`, {
       inbox: { inbox_id: inboxId },
+    });
+  }
+
+  update(params = {}) {
+    const { assistantId, inboxId, config } = params;
+    return axios.patch(`${this.url}/${assistantId}/inboxes/${inboxId}`, {
+      config,
     });
   }
 

@@ -52,7 +52,12 @@ module CaptainFeaturable
         next
       end
 
+      next if model_name.blank?
       next if Llm::Models.valid_model_for?(feature_key, model_name)
+      # Accept any non-empty model name that's not in the registry — admin may have
+      # configured a custom OpenAI-compatible endpoint (OpenRouter, Together, vLLM,
+      # llama.cpp) with any model id. The openai SDK will pass it through unchanged.
+      next if model_name.to_s.match?(/\A[A-Za-z0-9._\-\/:]{1,128}\z/)
 
       allowed_models = Llm::Models.models_for(feature_key)
       errors.add(:captain_models, "'#{model_name}' is not a valid model for #{feature_key}. Allowed: #{allowed_models.join(', ')}")

@@ -6,6 +6,7 @@ import { useCaptainConfigStore } from 'dashboard/store/captain/preferences';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import DropdownBody from 'dashboard/components-next/dropdown-menu/base/DropdownBody.vue';
 import DropdownItem from 'dashboard/components-next/dropdown-menu/base/DropdownItem.vue';
+import NextButton from 'dashboard/components-next/button/Button.vue';
 import { provideDropdownContext } from 'dashboard/components-next/dropdown-menu/base/provider.js';
 
 const props = defineProps({
@@ -23,10 +24,11 @@ const PROVIDER_ICONS = {
   anthropic: 'i-ri-anthropic-line',
   mistral: 'i-logos-mistral-icon',
   gemini: 'i-woot-gemini',
+  openai_compatible: 'i-lucide-plug',
 };
 
 const iconForModel = model => {
-  return PROVIDER_ICONS[model.provider];
+  return PROVIDER_ICONS[model.provider] || PROVIDER_ICONS.openai_compatible;
 };
 
 const { t } = useI18n();
@@ -64,6 +66,12 @@ const selectedModelDetails = computed(() => {
   );
 });
 
+// If the selected model is not in the registry, surface it as a "custom" entry.
+const selectedIsCustom = computed(() => {
+  if (!selectedModelId.value || selectedModelDetails.value) return false;
+  return /^[A-Za-z0-9._\-\/:]{1,128}$/.test(selectedModelId.value);
+});
+
 const getCreditLabel = model => {
   const multiplier = model.credit_multiplier || 1;
   return t('CAPTAIN_SETTINGS.MODEL_CONFIG.CREDITS_PER_MESSAGE', {
@@ -77,6 +85,8 @@ const toggleDropdown = () => {
 
 const closeDropdown = () => {
   isOpen.value = false;
+  showCustomInput.value = false;
+  customModelName.value = '';
 };
 
 provideDropdownContext({
@@ -90,6 +100,26 @@ const selectModel = model => {
   emit('change', { feature: props.featureKey, model: model.id });
   closeDropdown();
 };
+
+// ---- Custom model entry ----
+const showCustomInput = ref(false);
+const customModelName = ref('');
+const customModelError = ref('');
+
+const submitCustomModel = () => {
+  const name = customModelName.value.trim();
+  if (!/^[A-Za-z0-9._\-\/:]{1,128}$/.test(name)) {
+    customModelError.value = t(
+      'CAPTAIN_SETTINGS.MODEL_CONFIG.CUSTOM_MODEL_INVALID',
+      { defaultValue: 'Use letters, numbers, dot, dash, underscore, slash, or colon (max 128 chars).' }
+    );
+    return;
+  }
+  customModelError.value = '';
+  selectedModelId.value = name;
+  emit('change', { feature: props.featureKey, model: name });
+  closeDropdown();
+};
 </script>
 
 <template>
@@ -101,6 +131,9 @@ const selectModel = model => {
     >
       <span v-if="selectedModelDetails" class="text-n-slate-12">
         {{ selectedModelDetails.display_name }}
+      </span>
+      <span v-else-if="selectedIsCustom" class="text-n-slate-12 font-mono text-xs">
+        {{ selectedModelId }}
       </span>
       <span v-else class="text-n-slate-10">
         {{ t('CAPTAIN_SETTINGS.MODEL_CONFIG.SELECT_MODEL') }}
@@ -148,6 +181,58 @@ const selectModel = model => {
           </div>
         </div>
       </DropdownItem>
+
+      <!-- Custom model entry — opens a free-text input below the list -->
+      <li class="border-t border-n-weak px-3 py-2">
+        <div v-if="!showCustomInput" class="flex items-center justify-between gap-2">
+          <span class="text-xs text-n-slate-11">
+            {{ t('CAPTAIN_SETTINGS.MODEL_CONFIG.CUSTOM_MODEL_HINT',
+              { defaultValue: 'Need a model that isn’t listed?' }) }}
+          </span>
+          <NextButton
+            sm
+            slate
+            faded
+            :label="t('CAPTAIN_SETTINGS.MODEL_CONFIG.CUSTOM_MODEL_BUTTON',
+              { defaultValue: 'Custom…' })"
+            @click="showCustomInput = true"
+          />
+        </div>
+        <div v-else class="flex flex-col gap-2">
+          <input
+            v-model="customModelName"
+            type="text"
+            :placeholder="t('CAPTAIN_SETTINGS.MODEL_CONFIG.CUSTOM_MODEL_PLACEHOLDER',
+              { defaultValue: 'e.g. anthropic/claude-3.5-sonnet, llama3.1:70b, …' })"
+            class="w-full text-sm border rounded px-2 py-1 border-n-weak bg-n-solid-1 text-n-slate-12 font-mono"
+            @keydown.enter="submitCustomModel"
+            @keydown.escape="showCustomInput = false"
+          />
+          <p v-if="customModelError" class="text-xs text-red-500">
+            {{ customModelError }}
+          </p>
+          <p v-else class="text-xs text-n-slate-11">
+            {{ t('CAPTAIN_SETTINGS.MODEL_CONFIG.CUSTOM_MODEL_HELP',
+              { defaultValue: 'Routed via the OpenAI SDK to your configured endpoint (OpenRouter, Together, vLLM, llama.cpp, etc.).' }) }}
+          </p>
+          <div class="flex justify-end gap-2">
+            <NextButton
+              sm
+              slate
+              faded
+              :label="t('CAPTAIN_SETTINGS.MODEL_CONFIG.CANCEL', { defaultValue: 'Cancel' })"
+              @click="showCustomInput = false; customModelName = ''"
+            />
+            <NextButton
+              sm
+              solid
+              :label="t('CAPTAIN_SETTINGS.MODEL_CONFIG.USE', { defaultValue: 'Use' })"
+              :disabled="!customModelName.trim()"
+              @click="submitCustomModel"
+            />
+          </div>
+        </div>
+      </li>
     </DropdownBody>
   </div>
 </template>

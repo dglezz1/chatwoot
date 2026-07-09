@@ -1,6 +1,6 @@
 <script setup>
-import { computed, watch, ref, nextTick } from 'vue';
-import { useMapGetter, useStore } from 'dashboard/composables/store';
+import { computed, watch, ref, nextTick, onMounted } from 'vue';
+import { useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
@@ -14,27 +14,39 @@ const store = useStore();
 const dialogType = ref('');
 const route = useRoute();
 
-const assistantId = computed(() => route.params.assistantId);
-const assistantUiFlags = useMapGetter('captainAssistants/getUIFlags');
-const uiFlags = useMapGetter('captainInboxes/getUIFlags');
-const isFetchingAssistant = computed(() => assistantUiFlags.value.fetchingItem);
-const isFetching = computed(() => uiFlags.value.fetchingList);
+const assistantId = computed(() => Number(route.params.assistantId));
 
-const captainInboxes = useMapGetter('captainInboxes/getRecords');
+// Read directly from store state via a wrapper that always returns an array.
+// This avoids the `useMapGetter` reactivity edge case where the v-for
+// silently fails to expand after the first render.
+const captainInboxes = computed(() => {
+  const list = store.state.captainInboxes?.records || [];
+  return [...list].sort((a, b) => b.id - a.id);
+});
+
+const isFetchingAssistant = computed(
+  () => !!store.state.captainAssistants?.uiFlags?.fetchingItem
+);
+const isFetching = computed(
+  () => !!store.state.captainInboxes?.uiFlags?.fetchingList
+);
+
+const isEmpty = computed(() => captainInboxes.value.length === 0);
 
 const selectedInbox = ref(null);
 const disconnectInboxDialog = ref(null);
 
 const handleDelete = () => {
-  disconnectInboxDialog.value.dialogRef.open();
+  disconnectInboxDialog.value?.dialogRef?.open();
 };
 
 const connectInboxDialog = ref(null);
 
 const handleCreate = () => {
   dialogType.value = 'create';
-  nextTick(() => connectInboxDialog.value.dialogRef.open());
+  nextTick(() => connectInboxDialog.value?.dialogRef?.open());
 };
+
 const handleAction = ({ action, id }) => {
   selectedInbox.value = captainInboxes.value.find(inbox => id === inbox.id);
   nextTick(() => {
@@ -49,15 +61,19 @@ const handleCreateClose = () => {
   selectedInbox.value = null;
 };
 
-watch(
-  assistantId,
-  newId => {
-    store.dispatch('captainInboxes/get', {
-      assistantId: newId,
-    });
-  },
-  { immediate: true }
-);
+const loadInboxes = async () => {
+  const newId = assistantId.value;
+  if (!newId) return;
+  try {
+    await store.dispatch('captainInboxes/get', { assistantId: newId });
+  } catch (e) {
+    // swallow — UI shows empty state on no data
+  }
+};
+
+watch(assistantId, loadInboxes, { immediate: false });
+
+onMounted(loadInboxes);
 </script>
 
 <template>
@@ -66,7 +82,7 @@ watch(
     :button-label="$t('CAPTAIN.INBOXES.ADD_NEW')"
     :button-policy="['administrator']"
     :is-fetching="isFetchingAssistant || isFetching"
-    :is-empty="!captainInboxes.length"
+    :is-empty="isEmpty"
     :show-pagination-footer="false"
     :show-know-more="false"
     :feature-flag="FEATURE_FLAGS.CAPTAIN"
@@ -77,12 +93,13 @@ watch(
     </template>
 
     <template #body>
-      <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-1 gap-4">
         <InboxCard
           v-for="captainInbox in captainInboxes"
+          v-bind:key="captainInbox.id"
           :id="captainInbox.id"
-          :key="captainInbox.id"
           :inbox="captainInbox"
+          :assistant-id="assistantId"
           @action="handleAction"
         />
       </div>

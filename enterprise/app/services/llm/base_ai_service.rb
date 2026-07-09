@@ -20,6 +20,13 @@ class Llm::BaseAiService
 
   def chat(model: @model, temperature: @temperature)
     RubyLLM.chat(model: model).with_temperature(temperature)
+  rescue RubyLLM::ModelNotFoundError
+    # Custom OpenAI-compatible model not in RubyLLM's registry. Fall back to the
+    # raw openai SDK which passes the model id through to the configured endpoint
+    # unchanged. Use this for any model on OpenRouter, Together, vLLM, llama.cpp,
+    # local OpenAI-compatible servers, etc.
+    Rails.logger.warn "[LLM] Model '#{model}' not in RubyLLM registry — falling back to OpenAI SDK"
+    Llm::OpenaiCompatChat.new(model: model, temperature: temperature)
   end
 
   private

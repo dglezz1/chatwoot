@@ -29,8 +29,10 @@ const hasTiktokConfigured = computed(() => {
 
 const isActive = computed(() => {
   const { key } = props.channel;
-  if (Object.keys(props.enabledFeatures).length === 0) {
-    return false;
+  const features = props.enabledFeatures || {};
+  if (Object.keys(features).length === 0) {
+    // OSS fallback: enable channels that don't require external API keys
+    return ['website', 'api', 'email', 'sms', 'telegram', 'line', 'whatsapp'].includes(key);
   }
   if (key === 'website') {
     return props.enabledFeatures.channel_website;

@@ -9,6 +9,7 @@ import { useAlert } from 'dashboard/composables';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
+import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 
 const props = defineProps({
   assistantId: {
@@ -20,6 +21,7 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel']);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_TEXT_LENGTH = 200_000; // mirror backend validation
 
 const { t } = useI18n();
 
@@ -32,6 +34,7 @@ const initialState = {
   url: '',
   documentType: 'url',
   pdfFile: null,
+  text: '',
 };
 
 const state = reactive({ ...initialState });
@@ -46,11 +49,18 @@ const validationRules = {
   pdfFile: {
     required: requiredIf(() => state.documentType === 'pdf'),
   },
+  text: {
+    required: requiredIf(() => state.documentType === 'text'),
+    minLength: requiredIf(
+      () => state.documentType === 'text' && minLength(1)
+    ),
+  },
 };
 
 const documentTypeOptions = [
   { value: 'url', label: t('CAPTAIN.DOCUMENTS.FORM.TYPE.URL') },
   { value: 'pdf', label: t('CAPTAIN.DOCUMENTS.FORM.TYPE.PDF') },
+  { value: 'text', label: t('CAPTAIN.DOCUMENTS.FORM.TYPE.TEXT') },
 ];
 
 const v$ = useVuelidate(validationRules, state);
@@ -58,6 +68,10 @@ const v$ = useVuelidate(validationRules, state);
 const isLoading = computed(() => formState.uiFlags.value.creatingItem);
 
 const hasPdfFileError = computed(() => v$.value.pdfFile.$error);
+const textCharCount = computed(() => state.text.length);
+const textCharCountError = computed(
+  () => textCharCount.value > MAX_TEXT_LENGTH
+);
 
 const getErrorMessage = (field, errorKey) => {
   return v$.value[field].$error
@@ -68,6 +82,7 @@ const getErrorMessage = (field, errorKey) => {
 const formErrors = computed(() => ({
   url: getErrorMessage('url', 'URL'),
   pdfFile: getErrorMessage('pdfFile', 'PDF_FILE'),
+  text: getErrorMessage('text', 'TEXT'),
 }));
 
 const handleCancel = () => emit('cancel');
@@ -107,13 +122,20 @@ const prepareDocumentDetails = () => {
   if (state.documentType === 'url') {
     formData.append('document[external_link]', state.url);
     formData.append('document[name]', state.name || state.url);
-  } else {
+  } else if (state.documentType === 'pdf') {
     formData.append('document[pdf_file]', state.pdfFile);
     formData.append(
       'document[name]',
       state.name || state.pdfFile.name.replace('.pdf', '')
     );
     // No need to send external_link for PDF - it's auto-generated in the backend
+  } else if (state.documentType === 'text') {
+    // Inline text — backend marks status=available immediately
+    formData.append('document[content]', state.text);
+    formData.append(
+      'document[name]',
+      state.name || `Text note ${new Date().toISOString().slice(0, 10)}`
+    );
   }
 
   return formData;
@@ -206,6 +228,37 @@ const handleSubmit = async () => {
       <p v-if="formErrors.pdfFile" class="text-xs text-n-ruby-9">
         {{ formErrors.pdfFile }}
       </p>
+    </div>
+
+    <div v-if="state.documentType === 'text'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-n-slate-12">
+        {{ t('CAPTAIN.DOCUMENTS.FORM.TEXT.LABEL') }}
+      </label>
+      <TextArea
+        v-model="state.text"
+        :placeholder="t('CAPTAIN.DOCUMENTS.FORM.TEXT.PLACEHOLDER')"
+        :rows="8"
+        :max-length="MAX_TEXT_LENGTH"
+        class="[&>textarea]:bg-n-alpha-black2"
+      />
+      <div class="flex justify-between items-center text-xs">
+        <p v-if="formErrors.text" class="text-n-ruby-9">
+          {{ formErrors.text }}
+        </p>
+        <p v-else class="text-n-slate-11">
+          {{ t('CAPTAIN.DOCUMENTS.FORM.TEXT.HELP_TEXT') }}
+        </p>
+        <p
+          class="tabular-nums"
+          :class="
+            textCharCountError
+              ? 'text-n-ruby-9'
+              : 'text-n-slate-11'
+          "
+        >
+          {{ textCharCount }} / {{ MAX_TEXT_LENGTH }}
+        </p>
+      </div>
     </div>
 
     <Input

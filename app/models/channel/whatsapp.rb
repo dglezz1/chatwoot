@@ -25,7 +25,7 @@ class Channel::Whatsapp < ApplicationRecord
   EDITABLE_ATTRS = [:phone_number, :provider, { provider_config: {} }].freeze
 
   # default at the moment is 360dialog lets change later.
-  PROVIDERS = %w[default whatsapp_cloud].freeze
+  PROVIDERS = %w[default whatsapp_cloud openwa].freeze
   before_validation :ensure_webhook_verify_token
 
   validates :provider, inclusion: { in: PROVIDERS }
@@ -62,11 +62,23 @@ class Channel::Whatsapp < ApplicationRecord
   end
 
   def provider_service
-    if provider == 'whatsapp_cloud'
+    case provider
+    when 'whatsapp_cloud'
       Whatsapp::Providers::WhatsappCloudService.new(whatsapp_channel: self)
+    when 'openwa'
+      Whatsapp::Providers::OpenwaService.new(whatsapp_channel: self)
     else
       Whatsapp::Providers::Whatsapp360DialogService.new(whatsapp_channel: self)
     end
+  end
+
+  # OpenWA provider does not need Meta webhook verification or auto-setup.
+  def should_auto_setup_webhooks?
+    return false if provider == 'openwa'
+
+    # Only auto-setup webhooks for whatsapp_cloud provider with manual setup
+    # Embedded signup calls setup_webhooks explicitly in EmbeddedSignupService
+    provider == 'whatsapp_cloud' && provider_config['source'] != 'embedded_signup'
   end
 
   # Enables voice: turns calling on at Meta (idempotent), then re-registers webhooks
@@ -122,7 +134,15 @@ class Channel::Whatsapp < ApplicationRecord
   private
 
   def ensure_webhook_verify_token
+    return if provider == 'openwa' # OpenWA has its own webhook signing; Chatwoot doesn't need a verify token for incoming webhooks
+
     provider_config['webhook_verify_token'] ||= SecureRandom.hex(16) if provider == 'whatsapp_cloud'
+  end
+
+  def teardown_webhooks
+    return if provider == 'openwa' # OpenWA webhooks are managed by the bridge service, not Chatwoot's webhook_setup_service
+
+    Whatsapp::WebhookTeardownService.new(self).perform
   end
 
   def validate_provider_config
@@ -135,15 +155,5 @@ class Channel::Whatsapp < ApplicationRecord
 
   def webhook_setup_service
     Whatsapp::WebhookSetupService.new(self, provider_config['business_account_id'], provider_config['api_key'])
-  end
-
-  def teardown_webhooks
-    Whatsapp::WebhookTeardownService.new(self).perform
-  end
-
-  def should_auto_setup_webhooks?
-    # Only auto-setup webhooks for whatsapp_cloud provider with manual setup
-    # Embedded signup calls setup_webhooks explicitly in EmbeddedSignupService
-    provider == 'whatsapp_cloud' && provider_config['source'] != 'embedded_signup'
   end
 end

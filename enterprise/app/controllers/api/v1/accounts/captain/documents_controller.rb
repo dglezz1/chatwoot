@@ -1,9 +1,9 @@
 class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseController
   before_action :current_account
-  before_action -> { check_authorization(Captain::Assistant) }
+  before_action -> { check_authorization(Captain::Assistant) }, except: [:recrawl_all]
 
   before_action :set_current_page, only: [:index]
-  before_action :set_documents, except: [:create]
+  before_action :set_documents, except: [:create, :recrawl_all]
   before_action :set_document, only: [:show, :destroy, :sync]
   before_action :set_assistant, only: [:create]
   RESULTS_PER_PAGE = 25
@@ -27,6 +27,11 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     return render_could_not_create_error('Missing Assistant') if @assistant.nil?
 
     @document = @assistant.documents.build(document_params)
+    # Inline text documents are immediately available — no crawl job needed.
+    if @document.content.present?
+      @document.external_link ||= "TEXT: #{@document.name.presence || 'inline-text'}_#{Time.current.to_i}"
+      @document.status = :available
+    end
     @document.save!
   rescue Captain::Document::LimitExceededError => e
     render_could_not_create_error(e.message)
@@ -46,6 +51,23 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     )
     Captain::Documents::PerformSyncJob.perform_later(@document)
     head :accepted
+  end
+
+  # POST /api/v1/accounts/:account_id/captain/documents/recrawl_all
+  # Triggers a background re-sync of every syncable document in the account whose
+  # last_synced_at is older than `interval_hours` (default 24h). Returns 202 with
+  # the job_id so the caller can poll logs.
+  def recrawl_all
+    interval_hours = params[:interval_hours].to_i
+    interval_hours = 24 if interval_hours <= 0
+
+    job = Captain::Documents::RecrawlAllJob.perform_later(
+      interval_hours: interval_hours,
+      batch_limit: 500
+    )
+    render json: { job_id: job.job_id, interval_hours: interval_hours,
+                   note: 'Background job enqueued. Recrawl runs on the scheduled_jobs queue.' },
+           status: :accepted
   end
 
   def destroy
@@ -79,6 +101,7 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     case source
     when 'web' then scope.syncable
     when 'pdf' then scope.pdf_documents
+    when 'text' then scope.text_documents
     else scope
     end
   end
@@ -127,6 +150,6 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
   end
 
   def document_params
-    params.require(:document).permit(:name, :external_link, :assistant_id, :pdf_file)
+    params.require(:document).permit(:name, :external_link, :assistant_id, :pdf_file, :content)
   end
 end

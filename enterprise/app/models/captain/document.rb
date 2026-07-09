@@ -38,7 +38,7 @@ class Captain::Document < ApplicationRecord
   has_one_attached :pdf_file
   store_accessor :metadata, :content_fingerprint, :last_sync_error_code, :sync_step, :openai_file_id
 
-  validates :external_link, presence: true, unless: -> { pdf_file.attached? }
+  validates :external_link, presence: true, unless: -> { pdf_file.attached? || content.present? }
   validates :external_link, uniqueness: { scope: :assistant_id }, allow_blank: true
   validates :content, length: { maximum: 200_000 }
   validates :pdf_file, presence: true, if: :pdf_document?
@@ -64,8 +64,9 @@ class Captain::Document < ApplicationRecord
 
   scope :for_account, ->(account_id) { where(account_id: account_id) }
   scope :for_assistant, ->(assistant_id) { where(assistant_id: assistant_id) }
-  scope :syncable, -> { where("external_link NOT LIKE 'PDF:%' AND external_link NOT LIKE '%.pdf'") }
+  scope :syncable, -> { where("external_link NOT LIKE 'PDF:%' AND external_link NOT LIKE '%.pdf' AND external_link NOT LIKE 'TEXT:%'") }
   scope :pdf_documents, -> { where("external_link LIKE 'PDF:%' OR external_link LIKE '%.pdf'") }
+  scope :text_documents, -> { where("external_link LIKE 'TEXT:%'") }
   scope :sync_in_progress, -> { sync_syncing.where(arel_table[:last_sync_attempted_at].gteq(SYNC_STALE_TIMEOUT.ago)) }
   scope :stale, lambda { |stale_before|
     sync_failed.or(sync_synced.where(arel_table[:last_synced_at].lt(stale_before)))
@@ -79,6 +80,17 @@ class Captain::Document < ApplicationRecord
     return true if external_link&.start_with?('PDF:')
 
     external_link&.ends_with?('.pdf')
+  end
+
+  def text_document?
+    content.present? && !pdf_file.attached? && external_link&.start_with?('TEXT:')
+  end
+
+  def document_kind
+    return 'pdf' if pdf_document?
+    return 'text' if text_document?
+
+    'url'
   end
 
   def content_type
@@ -108,7 +120,7 @@ class Captain::Document < ApplicationRecord
   end
 
   def syncable?
-    !pdf_document?
+    !pdf_document? && !text_document?
   end
 
   def sync_stale?

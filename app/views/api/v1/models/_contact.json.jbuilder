@@ -4,6 +4,7 @@ json.email resource.email
 json.id resource.id
 json.name resource.name
 json.phone_number resource.phone_number
+json.display_phone resource.display_phone
 json.blocked resource.blocked
 json.identifier resource.identifier
 json.company_id resource.company_id if Current.account&.feature_enabled?('companies')

@@ -116,3 +116,55 @@ Practical checklist for any change impacting core logic or public APIs
 ## Branding / White-labeling note
 
 - For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+
+## OpenWA Integration — Project-Specific Notes
+
+This deployment uses OpenWA (`openwa-openwa:latest`) as the WhatsApp provider instead of Meta Cloud API.
+
+### Dual-container sync (REQUIRED)
+
+The official Chatwoot image bakes code into `/app/` (no host volume mount for app code — only persistent volumes for storage/redis/postgres). Every code edit MUST be propagated:
+
+```bash
+docker cp <local-file> chatwoot-rails-1:/app/<same-path>
+docker cp <local-file> chatwoot-sidekiq-1:/app/<same-path>
+docker restart chatwoot-rails-1
+docker restart chatwoot-sidekiq-1
+```
+
+`OpenwaService`, `Channel::Whatsapp`, and `PayloadAdapter` all execute from BOTH containers (rails handles HTTP/webhook, sidekiq handles SendReplyJob). Missing files in either container will surface as silent failures (HTTP 404/500) or Sidekiq crashloops.
+
+### `docker cp` leaf-path gotcha
+
+If the destination directory does not exist, `docker cp` creates it AND a leaf directory named after the file instead of writing the file. Symptom: Sidekiq crashloop with `cannot load such file -- /app/app/.../foo.rb (LoadError)`.
+
+Fix pattern:
+```bash
+docker exec chatwoot-sidekiq-1 rm -rf /app/app/path/to/foo.rb   # remove phantom dir
+docker exec chatwoot-sidekiq-1 mkdir -p /app/app/path/to          # recreate parent
+docker cp ./app/path/to/foo.rb chatwoot-sidekiq-1:/app/app/path/to/foo.rb
+```
+
+### OpenWA provider service contract
+
+- Auth header: `X-Api-Key: <key>` (NOT `Authorization: Bearer`)
+- chatId suffixes: `@c.us` (real phone), `@lid` (private number, MUST use `@lid` to send), `@g.us` (group)
+- Webhook HMAC: header `X-OpenWA-Signature: sha256=<hex>`, strip prefix before compare
+- Endpoint patterns are in `~/Developer/chatwoot/app/services/whatsapp/openwa/payload_adapter.rb`
+
+### LID persistence flow
+
+`ContactInbox.source_id` regex rejects `@lid`/`@g.us`. Full chatId is persisted on `Contact.additional_attributes['openwa_chat_id']` via `Whatsapp::Openwa::LidIdentifierJob`, dispatched from the webhook controller after `IncomingMessageService`. `OpenwaService#destination_chat_id` reads this attribute first when sending replies.
+
+### Docker stack ports (this deployment)
+
+| Service | Host | Container |
+|---------|------|-----------|
+| Rails | 3000 | 3000 |
+| Sidekiq | — | — |
+| OpenWA API | 127.0.0.1:2785 | 2785 |
+| OpenWA Dashboard | — | 2886 |
+| Postgres | 127.0.0.1:5434 | 5432 |
+| Redis | — | 6379 |
+
+Network alias `chatwoot.local` on the rails service lets the OpenWA container resolve the webhook target by hostname.

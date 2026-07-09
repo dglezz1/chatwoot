@@ -38,6 +38,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  textDocument: {
+    type: Boolean,
+    default: false,
+  },
+  kind: {
+    type: String,
+    default: 'url',
+  },
   createdAt: {
     type: Number,
     required: true,
@@ -96,18 +104,19 @@ const modelValue = computed({
 });
 
 const isPdf = computed(() => props.pdfDocument);
+const isText = computed(() => props.textDocument || props.kind === 'text');
 const hasSafeLink = computed(() => isSafeHttpLink(props.externalLink));
 const canManage = computed(() => checkPermissions(['administrator']));
 const isAvailable = computed(() => props.status === 'available');
 const canSync = computed(
-  () => canManage.value && !isPdf.value && isAvailable.value
+  () => canManage.value && !isPdf.value && !isText.value && isAvailable.value
 );
 const isSyncing = computed(() => props.syncStatus === 'syncing');
 const isFailed = computed(() => props.syncStatus === 'failed');
 const isRetryableSync = computed(
   () => isFailed.value || (isSyncing.value && !props.syncInProgress)
 );
-const showSyncStatus = computed(() => !isPdf.value);
+const showSyncStatus = computed(() => !isPdf.value && !isText.value);
 
 const menuItems = computed(() => {
   const allOptions = [
@@ -149,9 +158,11 @@ const displayLink = computed(() =>
     ? formatDocumentLink(props.externalLink)
     : getDocumentDisplayPath(props.externalLink)
 );
-const linkIcon = computed(() =>
-  isPdf.value ? 'i-ph-file-pdf' : 'i-ph-link-simple'
-);
+const linkIcon = computed(() => {
+  if (isPdf.value) return 'i-ph-file-pdf';
+  if (isText.value) return 'i-ph-file-text';
+  return 'i-ph-link-simple';
+});
 
 const handleAction = ({ action, value }) => {
   toggleDropdown(false);

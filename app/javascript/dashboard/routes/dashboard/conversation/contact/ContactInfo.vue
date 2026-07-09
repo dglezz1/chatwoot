@@ -251,7 +251,7 @@ export default {
           />
           <ContactInfoRow
             :href="contact.phone_number ? `tel:${contact.phone_number}` : ''"
-            :value="contact.phone_number"
+            :value="contact.display_phone || contact.phone_number"
             icon="call"
             emoji="📞"
             :title="$t('CONTACT_PANEL.PHONE_NUMBER')"

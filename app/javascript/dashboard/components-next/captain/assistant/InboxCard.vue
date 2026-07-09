@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useToggle } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 
@@ -8,6 +8,9 @@ import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.v
 import Button from 'dashboard/components-next/button/Button.vue';
 import Policy from 'dashboard/components/policy.vue';
 import { INBOX_TYPES, getInboxIconByType } from 'dashboard/helper/inbox';
+
+import InboxSettingsDialog from 'dashboard/components-next/captain/pageComponents/inbox/InboxSettingsDialog.vue';
+import OpenwaLiveOpsDialog from 'dashboard/components-next/captain/pageComponents/inbox/OpenwaLiveOpsDialog.vue';
 
 const props = defineProps({
   id: {
@@ -18,13 +21,27 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  assistantId: {
+    type: Number,
+    required: true,
+  },
 });
 
-const emit = defineEmits(['action']);
+const emit = defineEmits(['action', 'updated']);
 
 const { t } = useI18n();
 
 const [showActionsDropdown, toggleDropdown] = useToggle();
+const [showSettingsDialog, toggleSettingsDialog] = useToggle();
+const [showLiveOpsDialog, toggleLiveOpsDialog] = useToggle();
+
+const settingsDialogRef = ref(null);
+const liveOpsDialogRef = ref(null);
+
+const isOpenwaInbox = computed(
+  () => props.inbox.channel_type === 'Channel::Whatsapp'
+    && props.inbox.provider === 'openwa'
+);
 
 const inboxName = computed(() => {
   const inbox = props.inbox;
@@ -48,14 +65,33 @@ const inboxName = computed(() => {
   return inbox.name;
 });
 
-const menuItems = computed(() => [
-  {
+const menuItems = computed(() => {
+  const items = [];
+
+  if (isOpenwaInbox.value) {
+    items.push({
+      label: t('CAPTAIN.INBOXES.OPTIONS.LIVE_OPS'),
+      value: 'liveops',
+      action: 'liveops',
+      icon: 'i-lucide-qr-code',
+    });
+  }
+
+  items.push({
+    label: t('CAPTAIN.INBOXES.OPTIONS.SETTINGS'),
+    value: 'settings',
+    action: 'settings',
+    icon: 'i-lucide-settings',
+  });
+  items.push({
     label: t('CAPTAIN.INBOXES.OPTIONS.DISCONNECT'),
     value: 'delete',
     action: 'delete',
     icon: 'i-lucide-trash',
-  },
-]);
+  });
+
+  return items;
+});
 
 const icon = computed(() => {
   const { medium, channel_type: type } = props.inbox;
@@ -64,8 +100,37 @@ const icon = computed(() => {
 
 const handleAction = ({ action, value }) => {
   toggleDropdown(false);
+  if (action === 'settings') {
+    toggleSettingsDialog(true);
+    return;
+  }
+  if (action === 'liveops') {
+    toggleLiveOpsDialog(true);
+    return;
+  }
   emit('action', { action, value, id: props.id });
 };
+
+const handleSettingsClose = () => {
+  toggleSettingsDialog(false);
+};
+
+const handleLiveOpsClose = () => {
+  toggleLiveOpsDialog(false);
+};
+
+const handleSettingsUpdated = () => {
+  emit('updated', { inboxId: props.inbox.id });
+};
+
+// OpenwaLiveOpsDialog wraps a native <dialog> which needs an explicit
+// open() call. Drive it from a watcher on the toggle, with nextTick so
+// the inner Dialog has actually mounted (its dialogRef is available).
+watch(showLiveOpsDialog, async isOpen => {
+  if (!isOpen) return;
+  await nextTick();
+  liveOpsDialogRef.value?.dialogRef?.open?.();
+});
 </script>
 
 <template>
@@ -99,5 +164,23 @@ const handleAction = ({ action, value }) => {
         </Policy>
       </div>
     </div>
+
+    <InboxSettingsDialog
+      v-if="showSettingsDialog"
+      ref="settingsDialogRef"
+      :assistant-id="assistantId"
+      :inbox-id="inbox.id"
+      :inbox-name="inboxName"
+      @close="handleSettingsClose"
+      @updated="handleSettingsUpdated"
+    />
+
+    <OpenwaLiveOpsDialog
+      v-if="showLiveOpsDialog && isOpenwaInbox"
+      ref="liveOpsDialogRef"
+      :channel-id="inbox.channel_id"
+      :inbox-name="inboxName"
+      @close="handleLiveOpsClose"
+    />
   </CardLayout>
 </template>

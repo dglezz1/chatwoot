@@ -2,7 +2,7 @@ version: '3'
 
 services:
   base: &base
-    image: chatwoot/chatwoot:latest
+    image: chatwoot-local:latest
     env_file: .env ## Change this file for customized env variables
     volumes:
       - storage_data:/app/storage
@@ -18,9 +18,16 @@ services:
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
+      - OPENWA_API_KEY=${OPENWA_API_KEY:-}
+      - OPENWA_WEBHOOK_SECRET=${OPENWA_WEBHOOK_SECRET:-}
+      - OPENWA_PUBLIC_BASE_URL=${OPENWA_PUBLIC_BASE_URL:-}
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     restart: always
+    networks:
+      default:
+        aliases:
+          - chatwoot.local
 
   sidekiq:
     <<: *base
@@ -31,21 +38,22 @@ services:
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
+      - OPENWA_API_KEY=${OPENWA_API_KEY:-}
+      - OPENWA_PUBLIC_BASE_URL=${OPENWA_PUBLIC_BASE_URL:-}
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
 
   postgres:
     image: pgvector/pgvector:pg16
     restart: always
+    env_file: .env
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:5434:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=chatwoot
       - POSTGRES_USER=postgres
-      # Please provide your own password.
-      - POSTGRES_PASSWORD=
 
   redis:
     image: redis:alpine
@@ -57,7 +65,34 @@ services:
     ports:
       - '127.0.0.1:6379:6379'
 
+  # OpenWA - WhatsApp Web API Gateway (alternative to Meta Cloud API)
+  # https://github.com/rmyndharis/OpenWA
+  openwa:
+    image: openwa-openwa:latest
+    container_name: chatwoot-openwa
+    restart: always
+    environment:
+      - PORT=2785
+      - DATABASE_TYPE=sqlite
+      - STORAGE_TYPE=local
+      - ENGINE_TYPE=whatsapp-web.js
+      - WEBHOOK_DEFAULT_URL=http://chatwoot.local:3000/webhooks/openwa
+      - API_KEY=${OPENWA_API_KEY:-}
+      - PUBLIC_BASE_URL=${OPENWA_PUBLIC_BASE_URL:-}
+      - LOG_LEVEL=info
+    volumes:
+      - openwa_data:/app/data
+      - openwa_sessions:/app/sessions
+    ports:
+      - '127.0.0.1:2785:2785'
+
 volumes:
   storage_data:
   postgres_data:
   redis_data:
+  openwa_data:
+  openwa_sessions:
+
+networks:
+  default:
+    name: chatwoot_default

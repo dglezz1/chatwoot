@@ -385,51 +385,55 @@
     "CONVERSATION_WORKFLOW": "Conversation Workflow"
   },
   "CAPTAIN_SETTINGS": {
-    "TITLE": "Captain Settings",
-    "DESCRIPTION": "Configure your AI models and features for Captain. Captain follows a credit based billing, you will be charged credits for every action Captain takes based on the model selected.",
-    "LOADING": "Loading Captain configuration...",
-    "LINK_TEXT": "Learn more about Captain Credits",
-    "NOT_ENABLED": "Captain is not enabled for your account. Please upgrade your plan to access Captain features.",
+    "TITLE": "Configuración de Captain",
+    "DESCRIPTION": "Configura tus modelos de IA y funciones para Captain. Captain sigue un sistema de facturación basado en créditos: se te cobrarán créditos por cada acción que Captain realice según el modelo seleccionado.",
+    "LOADING": "Cargando la configuración de Captain...",
+    "LINK_TEXT": "Saber más sobre precios",
+    "NOT_ENABLED": "Actualiza para usar Captain AI",
     "MODEL_CONFIG": {
-      "TITLE": "Model Configuration",
-      "DESCRIPTION": "Select AI models for different features.",
-      "SELECT_MODEL": "Select model",
-      "CREDITS_PER_MESSAGE": "{credits} credit/message",
-      "COMING_SOON": "Coming soon",
+      "TITLE": "Configuración del modelo",
+      "DESCRIPTION": "Selecciona modelos de IA para diferentes funciones.",
+      "SELECT_MODEL": "Seleccionar modelo",
+      "CREDITS_PER_MESSAGE": "{credits} crédito/mensaje",
+      "COMING_SOON": "Próximamente",
       "EDITOR": {
-        "TITLE": "Editor Features",
-        "DESCRIPTION": "Powers smart compose, grammar corrections, tone adjustments, and content enhancement in your message editor."
+        "TITLE": "Funciones del editor",
+        "DESCRIPTION": "Potencia la composición inteligente, correcciones gramaticales, ajustes de tono y mejora de contenido en tu editor de mensajes."
       },
       "ASSISTANT": {
-        "TITLE": "Assistant",
-        "DESCRIPTION": "Handles automated responses, conversation summaries, and intelligent reply suggestions for customer interactions."
+        "TITLE": "Asistente",
+        "DESCRIPTION": "Maneja respuestas automatizadas, resúmenes de conversaciones y sugerencias inteligentes de respuesta para interacciones con clientes."
       },
       "COPILOT": {
-        "TITLE": "Co-pilot",
-        "DESCRIPTION": "Provides real-time contextual suggestions, knowledge base recommendations, and proactive insights during conversations."
+        "TITLE": "Co-piloto",
+        "DESCRIPTION": "Proporciona sugerencias contextuales en tiempo real, recomendaciones de base de conocimiento y perspectivas proactivas durante las conversaciones."
       }
     },
     "FEATURES": {
       "TITLE": "Características",
-      "DESCRIPTION": "Enable or disable AI-powered features.",
-      "AUDIO_TRANSCRIPTION": {
-        "TITLE": "Audio Transcription",
-        "DESCRIPTION": "Automatically convert voice messages and call recordings into searchable text transcripts."
+      "DESCRIPTION": "Activa o desactiva las funciones impulsadas por IA.",
+      "LABEL_SUGGESTION": {
+        "TITLE": "Sugerencia de etiquetas",
+        "DESCRIPTION": "Sugiere automáticamente etiquetas y tags relevantes para conversaciones basadas en análisis de contenido y contexto.",
+        "MODEL_TITLE": "Modelo de sugerencia de etiquetas",
+        "MODEL_DESCRIPTION": "Selecciona el modelo de IA para analizar conversaciones y sugerir etiquetas apropiadas"
       },
       "HELP_CENTER_SEARCH": {
-        "TITLE": "Help Center Search Indexing",
-        "DESCRIPTION": "Use AI for context aware search inside your help center articles."
+        "TITLE": "Indexación de búsqueda del centro de ayuda",
+        "DESCRIPTION": "Usa IA para búsqueda con conciencia de contexto dentro de los artículos de tu centro de ayuda.",
+        "MODEL_TITLE": "Modelo de búsqueda del centro de ayuda",
+        "MODEL_DESCRIPTION": "Selecciona el modelo de IA para buscar en los artículos del centro de ayuda"
       },
-      "LABEL_SUGGESTION": {
-        "TITLE": "Label Suggestion",
-        "DESCRIPTION": "Automatically suggest relevant labels and tags for conversations based on content analysis and context.",
-        "MODEL_TITLE": "Label Suggestion Model",
-        "MODEL_DESCRIPTION": "Select the AI model to use for analyzing conversations and suggesting appropriate labels"
+      "AUDIO_TRANSCRIPTION": {
+        "TITLE": "Transcripción de audio",
+        "DESCRIPTION": "Convierte automáticamente mensajes de voz y grabaciones de llamadas en transcripciones de texto buscables.",
+        "MODEL_TITLE": "Modelo de transcripción de audio",
+        "MODEL_DESCRIPTION": "Selecciona el modelo de IA para convertir mensajes de audio en transcripciones de texto."
       }
     },
     "API": {
-      "SUCCESS": "Captain settings updated successfully.",
-      "ERROR": "Failed to update Captain settings. Please try again."
+      "SUCCESS": "Configuración guardada correctamente",
+      "ERROR": "Error al guardar la configuración. Inténtalo de nuevo."
     }
   },
   "BILLING_SETTINGS": {

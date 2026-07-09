@@ -180,6 +180,43 @@ class Contact < ApplicationRecord
     }
   end
 
+  # Returns the phone identifier to render in the UI.
+  #
+  # For contacts with a real phone number, returns the formatted E164.
+  # For WhatsApp private-number (LID) contacts — where `phone_number` is just
+  # the OpenWA source_id digits and not a real phone — returns the contact's
+  # WhatsApp display name (pushName) or a "Private number" fallback.
+  #
+  # Detection: a contact is treated as private-number (LID) when its
+  # `additional_attributes['openwa_chat_id']` ends in `@lid`. This is set by
+  # the OpenWA webhook controller when the first message arrives with a LID
+  # chatId.
+  def display_phone
+    return formatted_phone_number if phone_number.present? && !private_number?
+
+    return name if name.present?
+
+    'Private number'
+  end
+
+  def private_number?
+    chat_id = additional_attributes.is_a?(Hash) ? additional_attributes['openwa_chat_id'] : nil
+    chat_id.is_a?(String) && chat_id.end_with?('@lid')
+  end
+
+  def formatted_phone_number
+    return phone_number if phone_number.blank?
+
+    # Light E164 pretty-print: split country code from national significant number.
+    # +CC (2-3) NSN (grouped) — best-effort, falls back to as-is for unknown formats.
+    digits = phone_number.sub(/\A\+/, '')
+    return phone_number if digits.length < 8
+
+    country = digits.length - 10 >= 0 ? digits[0, digits.length - 10] : digits[0, 2]
+    nsn = digits[country.length..]
+    "+#{country} #{nsn}"
+  end
+
   def self.resolved_contacts(use_crm_v2: false)
     return where(contact_type: 'lead') if use_crm_v2
 

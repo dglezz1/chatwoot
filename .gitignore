@@ -104,3 +104,13 @@ CLAUDE.local.md
 .pnpm-store/*
 local/
 Procfile.worktree
+
+# Build artifacts
+graphify-out/
+node_modules/
+public/assets/
+tmp/cache/
+.pnpm-store/
+log/
+coverage/
+vendor/bundle/

@@ -13,6 +13,13 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
 
     return unless conversation_pending?
 
+    # SAFETY: refuse to run Captain V1 on conversations that should never get a
+    # bot reply (WhatsApp groups / broadcast lists, private messages, no
+    # content, owner opted out, etc.). The hook layer already filters for the
+    # happy path, but jobs can be enqueued through automation rules, browser
+    # console, cron, etc. Defense in depth.
+    return unless captain_safe_to_respond?
+
     Current.executed_by = @assistant
 
     if captain_v2_enabled?
@@ -32,6 +39,35 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   private
 
   delegate :account, :inbox, to: :@conversation
+
+  # Centralized allow-list for V1. Mirrors the safe_to_respond? rules in
+  # Enterprise::MessageTemplates::HookExecutionService. Returning false here
+  # silently drops the job without auto-handoff — which means an
+  # accidentally enqueued job cannot spam the contact.
+  def captain_safe_to_respond?
+    convo = @conversation
+    msg = @conversation.messages.where(message_type: :incoming).order(created_at: :desc).first
+    return false if convo.nil?
+    return false unless convo.pending?
+    return false if msg.nil?
+    return false if msg.private
+    return false if msg.content.blank?
+    return false if inbox&.respond_to?(:captain_assistant) && inbox.captain_assistant.nil?
+    return false if inbox&.channel_type == 'Channel::Whatsapp' && whatsapp_chat_suffix(msg)&.in?(%w[@g.us @broadcast])
+
+    true
+  end
+
+  def whatsapp_chat_suffix(message)
+    candidates = [
+      message.additional_attributes&.dig('chat_id'),
+      message.additional_attributes&.dig('openwa_chat_id'),
+      message.conversation&.contact_inbox&.source_id,
+      message.sender.is_a?(Contact) ? '@c.us' : nil
+    ].compact
+    candidates.find { |c| c.is_a?(String) }&.then { |c| c.match(/@[a-z.]+\z/)&.[](0) } ||
+      '@c.us'
+  end
 
   def generate_and_process_response
     message_history = collect_previous_messages
@@ -188,8 +224,28 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     @response ||= {}
     @response['action_source'] ||= 'error'
     @response['action_reason'] ||= error_action_reason(error)
-    process_v1_handoff if conversation_pending?
+    # SAFETY: Only escalate to handoff on transient/expected LLM errors
+    # where handoff makes sense (rate limit, context overflow). Hard
+    # programming/parsing errors shouldn't spam the contact with a
+    # "Te conecto con un humano" message every time, which is what
+    # caused the random-number spam incident on 2026-07-03.
+    if conversation_pending? && recoverable_llm_error?(error)
+      process_v1_handoff
+    end
     true
+  end
+
+  # Errors that genuinely justify handing the conversation over to a human.
+  # Everything else (JSON parse, NoMethodError, etc.) is logged but
+  # silently absorbed so the customer never sees the fallback message.
+  def recoverable_llm_error?(error)
+    err = error.class.name
+    err.include?('Faraday') ||
+      err.include?('Net::') ||
+      err.include?('Timeout') ||
+      err.include?('Llm::ContextLimit') ||
+      err.include?('Llm::RateLimit') ||
+      err.include?('Captain::Llm::ContextLimit')
   end
 
   def log_error(error)

@@ -63,6 +63,15 @@ Rails.application.routes.draw do
           end
           namespace :captain do
             resource :preferences, only: [:show, :update]
+            # Agent builder — programmatic creation of a Captain assistant
+            # with training data (web/PDF/text) and guardrails.
+            # POST /api/v1/accounts/:account_id/captain/agents
+            resources :agents, only: [:create, :show] do
+              collection do
+                get :schema
+                post :bulk_create
+              end
+            end
             resources :assistants do
               member do
                 post :playground
@@ -70,7 +79,7 @@ Rails.application.routes.draw do
               collection do
                 get :tools
               end
-              resources :inboxes, only: [:index, :create, :destroy], param: :inbox_id
+              resources :inboxes, only: [:index, :show, :create, :update, :destroy], param: :inbox_id
               resources :scenarios
             end
             resources :assistant_responses
@@ -84,6 +93,9 @@ Rails.application.routes.draw do
             end
             resources :documents, only: [:index, :show, :create, :destroy] do
               post :sync, on: :member
+              collection do
+                post :recrawl_all
+              end
             end
             resource :tasks, only: [], controller: 'tasks' do
               post :rewrite
@@ -341,6 +353,17 @@ Rails.application.routes.draw do
 
           namespace :whatsapp do
             resource :authorization, only: [:create]
+            # OpenWA WhatsApp Web Gateway (alternative to Meta Cloud API)
+            scope :openwa do
+              get :health, to: 'openwa#health'
+              get :sessions, to: 'openwa#sessions'
+              post :sessions, to: 'openwa#create_session'
+              get 'sessions/:id/qr', to: 'openwa#qr'
+              post 'sessions/:id/start', to: 'openwa#start'
+              post 'sessions/:id/stop', to: 'openwa#stop'
+              delete 'sessions/:id', to: 'openwa#destroy'
+              post 'sessions/:id/register_webhook', to: 'openwa#register_webhook'
+            end
           end
 
           resources :webhooks, only: [:index, :create, :update, :destroy]
@@ -540,6 +563,23 @@ Rails.application.routes.draw do
     end
   end
 
+  # OpenWA live-ops: status / start / stop / qr for the channel's session.
+  # Used by the inbox settings dialog in the dashboard.
+  # NOTE: placed under /api/v2 so it shares the JWT auth pipeline with the
+  # main dashboard. The frontend hits these from /api/v2/whatsapp/openwa/*.
+  namespace :api do
+    namespace :v2 do
+      namespace :whatsapp do
+        namespace :openwa do
+          get  'channels/:channel_id',       to: 'live_ops#status'
+          post 'channels/:channel_id/start', to: 'live_ops#start'
+          post 'channels/:channel_id/stop',  to: 'live_ops#stop'
+          get  'channels/:channel_id/qr',     to: 'live_ops#qr'
+        end
+      end
+    end
+  end
+
   # ----------------------------------------------------------------------
   # Routes for platform APIs
   namespace :platform, defaults: { format: 'json' } do
@@ -621,6 +661,9 @@ Rails.application.routes.draw do
   post 'webhooks/line/:line_channel_id', to: 'webhooks/line#process_payload'
   post 'webhooks/telegram/:bot_token', to: 'webhooks/telegram#process_payload'
   post 'webhooks/sms/:phone_number', to: 'webhooks/sms#process_payload'
+  # OpenWA WhatsApp Web Gateway (https://github.com/rmyndharis/OpenWA)
+  post 'webhooks/openwa/:sessionId', to: 'webhooks/openwa#process_payload'
+  post 'webhooks/openwa', to: 'webhooks/openwa#process_payload'
   get 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#verify'
   post 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#process_payload'
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'

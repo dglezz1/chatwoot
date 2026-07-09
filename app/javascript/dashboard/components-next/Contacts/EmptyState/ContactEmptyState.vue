@@ -46,7 +46,7 @@ const onClick = () => {
           :name="contact.name"
           :email="contact.email"
           :thumbnail="contact.thumbnail"
-          :phone-number="contact.phoneNumber"
+          :phone-number="contact.displayPhone || contact.phoneNumber"
           :additional-attributes="contact.additionalAttributes"
           :is-expanded="0 === contact.id"
           @toggle="toggleExpanded(contact.id)"

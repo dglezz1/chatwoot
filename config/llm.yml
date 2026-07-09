@@ -5,6 +5,12 @@ providers:
     display_name: 'Anthropic'
   gemini:
     display_name: 'Gemini'
+  openai_compatible:
+    display_name: 'OpenAI-compatible'
+  # Catch-all for custom user-defined models — see the UI "Custom..." dropdown entry
+  # below the standard model list. Any model id works as long as your
+  # CAPTAIN_OPEN_AI_ENDPOINT + CAPTAIN_OPEN_AI_API_KEY point at an
+  # OpenAI-compatible API (OpenRouter, Together, Groq, vLLM, llama.cpp, etc.).
 
 models:
   gpt-4.1:
