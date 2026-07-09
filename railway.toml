@@ -11,8 +11,10 @@
 builder = "DOCKERFILE"
 dockerfilePath = "docker/Dockerfile"
 
+# startCommand is intentionally left out so Railway uses the Procfile's
+# `web:` and `worker:` lines (which hardcode PORT=3000). A literal
+# `$PORT` here breaks Rails' --port parsing (Thor expects a number).
 [deploy]
-startCommand = "bundle exec rails s -p $PORT -e production -b 0.0.0.0"
 preDeployCommand = "bundle exec rails db:chatwoot_prepare"
 healthcheckPath = "/api"
 healthcheckTimeout = 60
