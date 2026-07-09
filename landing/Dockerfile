@@ -1,15 +1,22 @@
-# Landing page — Chambeabot
-#
-# Serves static index.html via nginx. Uses ARG PORT (defaults 3000) for the listen port.
+# Landing page — Chambeabot (nginx static)
+# 
 # Build context: this directory (landing/), rootDirectory = "/landing".
 
 FROM nginx:alpine
 
-ARG PORT=3000
-
-# Replace the listen directives with our PORT arg.
-RUN sed -i "s/listen       80;/listen       ${PORT};/g" /etc/nginx/conf.d/default.conf \
-    && sed -i "s/listen  \[::\]:80;/listen  \[::\]:${PORT};/g" /etc/nginx/conf.d/default.conf
+# Overwrite the default nginx config with one that listens on port 3000.
+RUN cat > /etc/nginx/conf.d/default.conf << 'NGINX'
+server {
+    listen 3000;
+    server_name _;
+    
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}
+NGINX
 
 COPY index.html /usr/share/nginx/html/index.html
 
