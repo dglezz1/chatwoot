@@ -1,0 +1,14 @@
+name = "chambeabot-email-relay"
+main = "src/index.js"
+compatibility_date = "2025-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Bind to email events
+[[send_email]]
+name = "chambeabot-email-relay"
+
+# Secrets (set via `wrangler secret put <NAME>`)
+#   CHATWOOT_RELAY_URL
+#     → https://crm.chambeabot.com/rails/action_mailbox/relay/inbound_emails
+#   CHATWOOT_EMAIL_BRIDGE_TOKEN
+#     → any long random string (e.g. `openssl rand -hex 32`)
