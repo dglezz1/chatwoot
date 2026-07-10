@@ -272,3 +272,4 @@ class Whatsapp::Providers::OpenwaService < Whatsapp::Providers::BaseService
       parsed['error']
   end
 end
+
