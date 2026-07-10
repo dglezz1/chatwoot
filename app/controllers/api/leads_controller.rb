@@ -9,8 +9,8 @@
 # designated lead inbox ("Web Leads" — we create one lazily if missing) and
 # pushes the lead into the same inbox a WhatsApp conversation would land in,
 # so the sales team sees it alongside everything else in the dashboard.
-class Api::LeadsController < ActionController::Base
-  respond_to :json
+class Api::LeadsController < ActionController::API
+  wrap_parameters format: [:json]
   protect_from_forgery with: :null_session
   skip_before_action :verify_authenticity_token
 
