@@ -32,6 +32,8 @@ Rails.application.configure do
   # 2) SMTP_ADDRESS present + no resend override → standard SMTP.
   # 3) SMTP_ADDRESS blank → sendmail (local postfix).
   # 4) Dev with LETTER_OPENER → letter_opener (local file output).
+  Rails.logger.info "[MAILER INIT] MAILER_DELIVERY_METHOD=#{ENV['MAILER_DELIVERY_METHOD'].inspect} RESEND_API_KEY present?=#{ENV['RESEND_API_KEY'].present?} Rails.env=#{Rails.env}"
+
   if ENV['MAILER_DELIVERY_METHOD'] == 'resend' && ENV['RESEND_API_KEY'].present?
     # Eager-load the delivery class so it's available before any mail is sent.
     # Mail::ResendDelivery is defined in lib/mail/resend_delivery.rb.
@@ -52,15 +54,20 @@ Rails.application.configure do
     )
 
     config.action_mailer.delivery_method = :resend
+    Rails.logger.info "[MAILER INIT] Set delivery_method = :resend"
   elsif Rails.env.test?
     config.action_mailer.delivery_method = :test
+    Rails.logger.info "[MAILER INIT] Set delivery_method = :test (test env)"
   elsif ENV['SMTP_ADDRESS'].present?
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = smtp_settings
+    Rails.logger.info "[MAILER INIT] Set delivery_method = :smtp (SMTP_ADDRESS set, falling through resend branch)"
   elsif Rails.env.development? && ENV['LETTER_OPENER']
     config.action_mailer.delivery_method = :letter_opener
+    Rails.logger.info "[MAILER INIT] Set delivery_method = :letter_opener"
   else
     config.action_mailer.delivery_method = :sendmail
+    Rails.logger.info "[MAILER INIT] Set delivery_method = :sendmail"
   end
 
   #########################################
@@ -79,4 +86,3 @@ Rails.application.configure do
   # Amazon SES ActionMailbox configuration
   config.action_mailbox.ses.subscribed_topic = ENV['ACTION_MAILBOX_SES_SNS_TOPIC'] if ENV['ACTION_MAILBOX_SES_SNS_TOPIC'].present?
 end
-
