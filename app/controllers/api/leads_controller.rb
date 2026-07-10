@@ -150,4 +150,5 @@ class Api::LeadsController < ActionController::API
     lines << (attrs[:message].presence || '(sin mensaje)')
     lines.join("\n")
   end
+end
 
