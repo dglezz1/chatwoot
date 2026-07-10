@@ -106,7 +106,7 @@
   premium: true
 - name: custom_tools
   display_name: Custom Tools
-  enabled: false
+  enabled: true
   premium: true
 - name: message_reply_to
   display_name: Message Reply To
@@ -135,7 +135,7 @@
   enabled: false
 - name: captain_integration
   display_name: Captain
-  enabled: false
+  enabled: true
   premium: true
 - name: custom_roles
   display_name: Custom Roles
@@ -146,7 +146,7 @@
   enabled: true
 - name: captain_v1_action_classifier
   display_name: Captain V1 Action Classifier
-  enabled: false
+  enabled: true
   premium: true
   chatwoot_internal: true
 - name: contact_chatwoot_support_team
@@ -176,7 +176,7 @@
   enabled: false
 - name: captain_integration_v2
   display_name: Captain V2
-  enabled: false
+  enabled: true
   premium: true
 - name: whatsapp_embedded_signup
   display_name: WhatsApp Embedded Signup
@@ -194,7 +194,7 @@
   enabled: true
 - name: captain_document_auto_sync
   display_name: Captain Document Auto Sync
-  enabled: false
+  enabled: true
   premium: true
 - name: advanced_search
   display_name: Advanced Search
