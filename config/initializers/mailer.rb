@@ -27,11 +27,14 @@ Rails.application.configure do
   smtp_settings[:open_timeout] = ENV['SMTP_OPEN_TIMEOUT'].to_i if ENV['SMTP_OPEN_TIMEOUT'].present?
   smtp_settings[:read_timeout] = ENV['SMTP_READ_TIMEOUT'].to_i if ENV['SMTP_READ_TIMEOUT'].present?
 
-  # 1) MAILER_DELIVERY_METHOD=resend → Resend HTTPS API (port 443, works on
-  #    all Railway plans including Hobby which blocks outbound SMTP).
-  # 2) SMTP_ADDRESS present + no resend override → standard SMTP.
-  # 3) SMTP_ADDRESS blank → sendmail (local postfix).
-  # 4) Dev with LETTER_OPENER → letter_opener (local file output).
+  # 1) MAILER_DELIVERY_METHOD=brevo  → Brevo HTTPS API  (port 443, recommended;
+  #    300 emails/day free, unlimited domains, no credit card).
+  # 2) MAILER_DELIVERY_METHOD=resend → Resend HTTPS API (port 443, fallback;
+  #    3k/month free but only 1 domain on free tier).
+  # 3) SMTP_ADDRESS present + no resend/brevo override → standard SMTP
+  #    (only works on Railway Pro/Enterprise — Hobby blocks outbound 25/465/587).
+  # 4) SMTP_ADDRESS blank → sendmail (local postfix).
+  # 5) Dev with LETTER_OPENER → letter_opener (local file output).
   #
   # NB: the `config.action_mailer.*=` setters only mutate the OrderedOptions
   # hash. The ActionMailer railtie's `action_mailer.set_configs` initializer
@@ -43,14 +46,25 @@ Rails.application.configure do
   # with the railtie's `on_load(:action_mailer)` block. To be safe, set
   # BOTH the OrderedOptions entry AND the ActionMailer::Base class attribute.
 
-  if ENV['MAILER_DELIVERY_METHOD'] == 'resend' && ENV['RESEND_API_KEY'].present?
-    # Eager-load the delivery class so it's available before any mail is sent.
-    # Mail::ResendDelivery is defined in lib/mail/resend_delivery.rb.
+  if ENV['MAILER_DELIVERY_METHOD'] == 'brevo' && ENV['BREVO_API_KEY'].present?
+    require Rails.root.join('lib', 'mail', 'brevo_delivery').to_s unless defined?(::Mail::BrevoDelivery)
+
+    ActionMailer::Base.add_delivery_method(
+      :brevo,
+      ::Mail::BrevoDelivery,
+      api_key: ENV.fetch('BREVO_API_KEY'),
+      api_base: ENV.fetch('BREVO_API_BASE', 'https://api.brevo.com'),
+      open_timeout: ENV.fetch('BREVO_OPEN_TIMEOUT', '5').to_i,
+      read_timeout: ENV.fetch('BREVO_READ_TIMEOUT', '10').to_i,
+      max_retries: ENV.fetch('BREVO_MAX_RETRIES', '1').to_i,
+      from_override: ENV['MAILER_SENDER_EMAIL'].presence
+    )
+
+    config.action_mailer.delivery_method = :brevo
+    ActionMailer::Base.delivery_method = :brevo
+  elsif ENV['MAILER_DELIVERY_METHOD'] == 'resend' && ENV['RESEND_API_KEY'].present?
     require Rails.root.join('lib', 'mail', 'resend_delivery').to_s unless defined?(::Mail::ResendDelivery)
 
-    # Register :resend as a delivery method. add_delivery_method creates
-    # `resend_settings` class attribute and wires up the class lookup so
-    # `delivery_method = :resend` works just like `:smtp` does.
     ActionMailer::Base.add_delivery_method(
       :resend,
       ::Mail::ResendDelivery,
