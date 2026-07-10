@@ -41,6 +41,12 @@ Rails.application.routes.draw do
   get '/health', to: 'health#show'
   get '/api', to: 'api#index'
   namespace :api, defaults: { format: 'json' } do
+    # Public lead capture endpoint hit by the marketing site (chambeabot.com).
+    # POST /api/leads → creates Contact + Conversation in the "Web Leads" inbox
+    # of the first account. No authentication.
+    match 'leads' => 'leads#preflight', via: :options
+    post 'leads', to: 'leads#create'
+
     namespace :v1 do
       # ----------------------------------
       # start of account scoped api routes
