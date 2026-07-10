@@ -33,18 +33,25 @@ Rails.application.configure do
   # 3) SMTP_ADDRESS blank → sendmail (local postfix).
   # 4) Dev with LETTER_OPENER → letter_opener (local file output).
   if ENV['MAILER_DELIVERY_METHOD'] == 'resend' && ENV['RESEND_API_KEY'].present?
-    # Pass the class directly to avoid Mail gem autoloading race conditions
-    # on cold deploys. The class is eager-loaded from lib/mail/resend_delivery.rb.
-    require Rails.root.join('lib', 'mail', 'resend_delivery').to_s unless defined?(Mail::ResendDelivery)
-    config.action_mailer.delivery_method = Mail::ResendDelivery
-    config.action_mailer.resend_settings = {
+    # Eager-load the delivery class so it's available before any mail is sent.
+    # Mail::ResendDelivery is defined in lib/mail/resend_delivery.rb.
+    require Rails.root.join('lib', 'mail', 'resend_delivery').to_s unless defined?(::Mail::ResendDelivery)
+
+    # Register :resend as a delivery method. add_delivery_method creates
+    # `resend_settings` class attribute and wires up the class lookup so
+    # `delivery_method = :resend` works just like `:smtp` does.
+    ActionMailer::Base.add_delivery_method(
+      :resend,
+      ::Mail::ResendDelivery,
       api_key: ENV.fetch('RESEND_API_KEY'),
       api_base: ENV.fetch('RESEND_API_BASE', 'https://api.resend.com'),
       open_timeout: ENV.fetch('RESEND_OPEN_TIMEOUT', '5').to_i,
       read_timeout: ENV.fetch('RESEND_READ_TIMEOUT', '10').to_i,
       max_retries: ENV.fetch('RESEND_MAX_RETRIES', '1').to_i,
       from_override: ENV['MAILER_SENDER_EMAIL'].presence
-    }
+    )
+
+    config.action_mailer.delivery_method = :resend
   elsif Rails.env.test?
     config.action_mailer.delivery_method = :test
   elsif ENV['SMTP_ADDRESS'].present?
