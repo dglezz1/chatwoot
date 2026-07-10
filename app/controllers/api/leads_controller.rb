@@ -80,15 +80,23 @@ class Api::LeadsController < ActionController::API
 
   # Open a new conversation for the lead against a "Web Leads" inbox (we
   # create one lazily). The first incoming message seeds the conversation so
-  # the sales team has something to read on the right pane.
+  # the sales team has something to read in the right pane.
   def open_lead_conversation(account, contact, attrs)
     inbox = account.inboxes.find_by(name: 'Web Leads') ||
             create_web_leads_inbox(account)
 
+    # Conversations require a contact_inbox join row. Source_id is the contact's
+    # id (matches the pattern used by Channel::WebWidget when a visitor starts
+    # a chat from a website).
+    contact_inbox = inbox.contact_inboxes.find_or_create_by!(source_id: contact.id) do |ci|
+      ci.contact = contact
+    end
+
     conversation = inbox.conversations.create!(
-      account:   account,
-      contact:   contact,
-      status:    :open,
+      account:         account,
+      contact:         contact,
+      contact_inbox:   contact_inbox,
+      status:          :open,
       additional_attributes: { source: 'chambeabot.com', plan: attrs[:plan] }
     )
 
