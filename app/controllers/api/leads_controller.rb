@@ -11,7 +11,6 @@
 # so the sales team sees it alongside everything else in the dashboard.
 class Api::LeadsController < ActionController::API
   wrap_parameters format: [:json]
-  skip_before_action :verify_authenticity_token
 
   # Permissive CORS so the marketing domain (chambeabot.com) can POST even when
   # the API host is crm.chambeabot.com. We don't accept credentials.
