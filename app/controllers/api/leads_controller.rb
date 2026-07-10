@@ -78,16 +78,14 @@ class Api::LeadsController < ActionController::API
     )
   end
 
-  # Open a new conversation for the lead against a "Web Leads" inbox (we
-  # create one lazily). The first incoming message seeds the conversation so
-  # the sales team has something to read in the right pane.
+  # Open a new conversation for the lead. We reuse the first non-widget API
+  # inbox if available (Channel::Whatsapp / Channel::Api) since WebWidget
+  # inboxes don't accept incoming messages. As a fallback we create a
+  # generic "Web Leads" inbox with an Api channel (lighter than WebWidget
+  # for lead capture; doesn't need pre-chat form widgets).
   def open_lead_conversation(account, contact, attrs)
-    inbox = account.inboxes.find_by(name: 'Web Leads') ||
-            create_web_leads_inbox(account)
+    inbox = pick_leads_inbox(account)
 
-    # Conversations require a contact_inbox join row. Source_id is the contact's
-    # id (matches the pattern used by Channel::WebWidget when a visitor starts
-    # a chat from a website).
     contact_inbox = inbox.contact_inboxes.find_or_create_by!(source_id: contact.id) do |ci|
       ci.contact = contact
     end
@@ -97,20 +95,49 @@ class Api::LeadsController < ActionController::API
       contact:         contact,
       contact_inbox:   contact_inbox,
       status:          :open,
-      additional_attributes: { source: 'chambeabot.com', plan: attrs[:plan] }
+      additional_attributes: {
+        source: 'chambeabot.com',
+        plan:   attrs[:plan],
+        company: attrs[:company]
+      }
     )
 
+    # Seed the conversation with an *outgoing* private note so the sales
+    # team has a clear summary on the right pane, and the public thread
+    # stays empty (the lead hasn't actually messaged us yet).
     body = format_lead_message(attrs)
     Messages::MessageBuilder.new(
-      nil,
+      user_or_bot(account),
       conversation,
       {
         content:      body,
-        message_type: 'incoming',
-        private:      false
+        message_type: 'outgoing',
+        private:      true
       }
     ).perform
     conversation
+  end
+
+  # Pick an inbox for the lead. We prefer the first non-widget API inbox
+  # (WhatsApp, Instagram, etc.) so the lead is part of the same workflow
+  # as real inbound conversations. Fall back to creating an Api-channel
+  # inbox specifically for web leads.
+  def pick_leads_inbox(account)
+    account.inboxes.where.not(channel_type: 'Channel::WebWidget').first ||
+      create_api_leads_inbox(account)
+  end
+
+  def create_api_leads_inbox(account)
+    api_channel = Channel::Api.create!(account: account)
+    Inbox.create!(account: account, channel: api_channel, name: 'Web Leads')
+  end
+
+  # Pick a system "sender" for the seeded private note — first admin or
+  # the first agent. If neither exists, build a system message by
+  # leaving sender nil (the message still saves as a contact-attributed
+  # outgoing message).
+  def user_or_bot(account)
+    account.administrators.first || account.agents.first
   end
 
   def format_lead_message(attrs)
@@ -124,17 +151,3 @@ class Api::LeadsController < ActionController::API
     lines.join("\n")
   end
 
-  # A dedicated Channel::WebWidget inbox for leads. We only create it once;
-  # the find_by(name:) above caches it after that.
-  def create_web_leads_inbox(account)
-    web_widget = Channel::WebWidget.create!(
-      account:     account,
-      website_url: 'https://chambeabot.com'
-    )
-    Inbox.create!(
-      account: account,
-      channel: web_widget,
-      name:    'Web Leads'
-    )
-  end
-end
