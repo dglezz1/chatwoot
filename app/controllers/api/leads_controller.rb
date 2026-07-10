@@ -10,7 +10,9 @@
 # pushes the lead into the same inbox a WhatsApp conversation would land in,
 # so the sales team sees it alongside everything else in the dashboard.
 class Api::LeadsController < ActionController::API
-  wrap_parameters format: [:json]
+  # Don't wrap — we want top-level keys (name, email, ...) directly on params,
+  # not nested under an api_leads key (the marketing site already sends flat JSON).
+  wrap_parameters format: []
 
   # Permissive CORS so the marketing domain (chambeabot.com) can POST even when
   # the API host is crm.chambeabot.com. We don't accept credentials.
