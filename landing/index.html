@@ -1,58 +1,612 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-MX">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chambeabot — Atención al cliente con IA en WhatsApp</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-         margin: 0; padding: 0; background: #0b1220; color: #f6f8fa; line-height: 1.55; }
-  main { max-width: 760px; margin: 0 auto; padding: 64px 24px 96px; }
-  h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 12px; letter-spacing: -0.02em; }
-  h2 { font-size: 1.25rem; margin: 32px 0 8px; color: #6ea8fe; }
-  p  { font-size: 1.0625rem; opacity: 0.85; }
-  a.cta { display: inline-block; margin-top: 24px; padding: 14px 28px; background: #2563eb;
-          color: #fff; border-radius: 12px; text-decoration: none; font-weight: 600;
-          transition: background 0.15s ease; }
-  a.cta:hover { background: #1d4ed8; }
-  ul { padding-left: 1.25rem; opacity: 0.85; }
-  li { margin: 6px 0; }
-  code { background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
-  hr { border: none; border-top: 1px solid rgba(255,255,255,0.12); margin: 48px 0; }
-  footer { opacity: 0.5; font-size: 0.875rem; margin-top: 56px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <title>Chambeabot — Chatbots con IA y CRM para tu negocio</title>
+  <meta name="description" content="Atención al cliente 24/7 por WhatsApp, Instagram, Messenger y Gmail. Bot con IA entrenado para tu negocio, CRM integrable, planes desde $299 MXN/mes." />
+  <meta name="keywords" content="chatbot whatsapp méxico, crm whatsapp, atención al cliente ia, bot de whatsapp para negocios, chambeabot" />
+  <meta property="og:title" content="Chambeabot — Chatbots con IA y CRM" />
+  <meta property="og:description" content="Atención 24/7 en WhatsApp, Instagram, Messenger y Gmail. Planes desde $299 MXN/mes." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_MX" />
+  <link rel="canonical" href="https://chambeabot.com" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
-<main>
-  <h1>Chambeabot</h1>
-  <p>Agentes de IA que atienden, califican y agendan por WhatsApp — para PyMEs en LATAM.</p>
 
-  <h2>Qué hace</h2>
-  <ul>
-    <li>Responde preguntas 24/7 con base de conocimiento propia de tu empresa.</li>
-    <li>Califica leads (industria, tamaño, urgencia) antes de pasar a un humano.</li>
-    <li>Agenda demos y manda confirmaciones automáticas.</li>
-    <li>Agrupar mensajes en bursts → 1 sola respuesta (anti-spam).</li>
-    <li>Sube documentos de tu producto, FAQ o políticas y se vuelven Q&amp;A vectorizados.</li>
-  </ul>
+<!-- ═══ Top nav ═══════════════════════════════════════════ -->
+<nav class="top-nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#top" aria-label="Chambeabot">
+      <span class="brand-dot">C</span>
+      Chambeabot
+    </a>
+    <div class="nav-links">
+      <a href="#servicios">Servicios</a>
+      <a href="#crm">CRM</a>
+      <a href="#planes">Planes</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="nav-cta" href="#agendar">Agendar demo gratuita</a>
+  </div>
+</nav>
 
-  <h2>Cómo funciona</h2>
-  <ul>
-    <li>Conectamos tu número de WhatsApp vía gateway local (sin Meta Cloud).</li>
-    <li>Tu agente se entrena con PDFs, URLs o texto que tú subas.</li>
-    <li>Embeddings via OpenAI / OpenRouter; generación via GPT-4o / Claude / Qwen.</li>
-  </ul>
+<!-- ═══ Hero ═══════════════════════════════════════════════ -->
+<header class="hero" id="top">
+  <div class="container hero-grid">
+    <div>
+      <span class="eyebrow"><span class="pulse"></span> Activo 24/7 · IA entrenada para tu negocio</span>
+      <h1>
+        Atiende a tus clientes <span class="highlight">en automático</span> por WhatsApp, Instagram, Messenger y Gmail.
+      </h1>
+      <p class="hero-sub">
+        Un bot con IA que responde como si fueras tú. Aprende tus productos, servicios y tono.
+        Cuando un cliente necesita hablar con humano, te lo deriva al instante.
+        Desde <strong>$299 MXN/mes</strong>.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary btn-lg" href="#agendar">Agendar demo gratuita</a>
+        <a class="btn btn-ghost btn-lg" href="#planes">Ver planes y precios</a>
+      </div>
+      <div class="trust-row">
+        <span><strong data-count="97">0</strong>% de mensajes resueltos sin humano</span>
+        <span><strong data-count="24">0</strong>/7 activo, sin descanso</span>
+        <span><strong data-count="3">0</strong> min de respuesta promedio</span>
+      </div>
+    </div>
 
-  <h2>El CRM vive en</h2>
-  <p>Accede al panel operativo en <code>crm.chambeabot.com</code> — ahí entrenas tu bot, ves conversaciones, mides desempeño y configuras reglas de handoff.</p>
+    <!-- Live WhatsApp mock -->
+    <aside class="chat-mock" aria-label="Ejemplo de conversación">
+      <div class="chat-mock-header">
+        <div class="chat-avatar">Bo</div>
+        <div>
+          <div class="chat-name">Bot Chambeabot</div>
+          <div class="chat-status">● en línea</div>
+        </div>
+      </div>
+      <div class="bubble them">Hola, ¿aún tienen disponible la crema para café que vi en su Instagram?</div>
+      <div class="bubble-time">14:02</div>
+      <span class="live-tag">● Bot respondiendo</span>
+      <div class="bubble bot">¡Hola María! Sí, tenemos la crema artesanal de 500g en $185 MXN. Si compras 3 te sale en $499 con envío gratis a CDMX. ¿Te la preparo?</div>
+      <div class="bubble-time">14:02</div>
+      <div class="bubble you">Sí, 3 por favor</div>
+      <div class="bubble-time">14:03</div>
+      <div class="bubble bot">Perfecto, te paso el link de pago MercadoPago. Tu pedido queda listo hoy mismo. 📦</div>
+      <div class="bubble-time">14:03</div>
+      <div class="bubble you">Gracias, súper rápido</div>
+      <div class="bubble bot">Gracias a ti María 💚 Cualquier duda me escribes.</div>
+      <div class="bubble-time">14:03</div>
+    </aside>
+  </div>
+</header>
 
-  <a class="cta" href="https://crm.chambeabot.com">Entrar al panel</a>
+<!-- ═══ Pain ═══════════════════════════════════════════════ -->
+<section class="pain" id="problema">
+  <div class="container">
+    <div class="section-header">
+      <h2>¿Te suena conocido?</h2>
+      <p>Si tu negocio sigue así, estás perdiendo ventas cada día que pasa.</p>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="pain-icon">⏰</div>
+        <h3>Mensajes sin contestar a las 11pm</h3>
+        <p>El cliente te escribió, tú ya dormías. Mañana compra con tu competencia.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-icon">📱</div>
+        <h3>WhatsApp + Instagram + Gmail y nadie responde igual</h3>
+        <p>Atender 4 redes en simultáneo es imposible para una sola persona.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-icon">🤯</div>
+        <h3>"¿Tienen X disponible? ¿Cuánto cuesta? ¿Hacen envíos?"</h3>
+        <p>Las mismas 5 preguntas todos los días. Tu tiempo vale más.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <hr>
-  <footer>
-    © 2026 Chambeabot — hecho en México para LATAM.
-  </footer>
-</main>
+<!-- ═══ Services / Canales ═══════════════════════════════ -->
+<section class="services" id="servicios">
+  <div class="container">
+    <div class="section-header">
+      <h2>Un bot. <span class="gradient-text">Todas tus redes.</span></h2>
+      <p>Conecta cada canal donde tus clientes te buscan. Una sola IA, entrenada con tu negocio, que contesta igual en todos lados.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service">
+        <div class="service-icon wa">W</div>
+        <h3>WhatsApp Business</h3>
+        <p>El canal #1 en México. Respuestas instantáneas, catálogo, link de pago, derivar a humano cuando se requiere.</p>
+      </div>
+      <div class="service">
+        <div class="service-icon ig">I</div>
+        <h3>Instagram DM</h3>
+        <p>Contesta los DMs de tus anuncios y de tu perfil. Convierte curiosos en clientes.</p>
+      </div>
+      <div class="service">
+        <div class="service-icon ms">M</div>
+        <h3>Facebook Messenger</h3>
+        <p>Atención automática para los mensajes que llegan desde tu Fanpage y anuncios.</p>
+      </div>
+      <div class="service">
+        <div class="service-icon gm">G</div>
+        <h3>Gmail / correo</h3>
+        <p>Responde consultas por email automáticamente y clasifica lo que requiere humano.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CRM section ══════════════════════════════════════ -->
+<section class="crm-comp" id="crm">
+  <div class="container">
+    <div class="section-header">
+      <h2>Y si además quieres un <span class="gradient-text">CRM multi-canal</span>...</h2>
+      <p>El mismo motor, ahora con bandeja de entrada unificada, automatizaciones, reportes y entrenamiento continuo.</p>
+    </div>
+
+    <div class="crm-table-wrap">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Capacidad</th>
+            <th>Solo Bot</th>
+            <th>Bot + CRM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Respuestas automáticas 24/7</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td>Múltiples redes sociales en un mismo bot</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td>Entrenamiento de la IA con tus datos</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td>Derivación a humano cuando el bot no sabe</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td>Horarios configurables (24/7 o por horario)</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td>Catálogo + link de pago Mercado Pago / Stripe</td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr style="border-top: 2px solid var(--border-strong)">
+            <td><strong>CRM — Bandeja unificada multi-canal</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>Asignación de conversaciones a tu equipo</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>Reportes de ventas y atención</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>Macros, etiquetas, automatizaciones</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>API para integrar tu software</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>Entrenamiento mensual continuo de la IA</strong></td>
+            <td><span class="dash">—</span></td>
+            <td><span class="check">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="crm-cta">
+      <a class="btn btn-ghost btn-lg" href="#planes">Ver los planes con CRM</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Planes / Pricing ═════════════════════════════════ -->
+<section class="plans" id="planes">
+  <div class="container">
+    <div class="section-header">
+      <h2>Planes para empezar y crecer con tu negocio</h2>
+      <p>Empieza desde abajo. Cuando creces, subes de plan. Sin contratos largos, cancelas cuando quieras.</p>
+    </div>
+
+    <div class="plans-grid">
+      <!-- Bot Starter -->
+      <div class="plan">
+        <span class="plan-tier">Solo bot</span>
+        <h3 class="plan-name">Bot Starter</h3>
+        <p class="plan-desc">Para empezar a probar con bajo volumen.</p>
+        <div class="plan-price">
+          <span class="amount">$299</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Hasta <strong>100 mensajes / día</strong></li>
+          <li><strong>1 canal</strong> (WhatsApp)</li>
+          <li>IA de baja precisión (modelo económico)</li>
+          <li>Respuestas FAQ + derivar a humano</li>
+          <li>Horario configurable o 24/7</li>
+          <li>Hosting, mantenimiento y updates incluidos</li>
+          <li>1 sesión de entrenamiento inicial</li>
+          <li>Soporte por WhatsApp en horario oficina</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-ghost" href="#agendar">Empezar con Bot Starter</a>
+        </div>
+      </div>
+
+      <!-- Bot Pro (FEATURED) -->
+      <div class="plan featured">
+        <span class="badge">Más popular</span>
+        <span class="plan-tier">Solo bot</span>
+        <h3 class="plan-name">Bot Pro</h3>
+        <p class="plan-desc">Para PyMEs con catálogo, reservas o link de pago.</p>
+        <div class="plan-price">
+          <span class="amount">$899</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Hasta <strong>500 mensajes / día</strong></li>
+          <li><strong>1 canal</strong> (WhatsApp)</li>
+          <li>IA de precisión media (mejor modelo)</li>
+          <li>Catálogo + link de pago Mercado Pago / Stripe</li>
+          <li>Reservas simples (fecha, hora, número de personas)</li>
+          <li>Horarios configurables o 24/7</li>
+          <li>Hosting, mantenimiento y updates incluidos</li>
+          <li>2 sesiones de entrenamiento + re-entrenamiento mensual</li>
+          <li>Soporte por WhatsApp 24/7</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-primary" href="#agendar">Empezar con Bot Pro</a>
+        </div>
+      </div>
+
+      <!-- Bot Multi -->
+      <div class="plan">
+        <span class="plan-tier">Solo bot</span>
+        <h3 class="plan-name">Bot Multi</h3>
+        <p class="plan-desc">Cuando ya tienes audiencia en varias redes.</p>
+        <div class="plan-price">
+          <span class="amount">$1,899</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Hasta <strong>2,000 mensajes / día</strong></li>
+          <li><strong>4 canales</strong>: WhatsApp + Instagram + Messenger + Gmail</li>
+          <li>IA de precisión media</li>
+          <li>Una sola IA unificada que aprende de todo</li>
+          <li>Catálogo, link de pago, reservas</li>
+          <li>Horarios configurables o 24/7</li>
+          <li>Hosting, mantenimiento y updates incluidos</li>
+          <li>Entrenamiento inicial + mensual</li>
+          <li>Soporte por WhatsApp 24/7</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-ghost" href="#agendar">Empezar con Bot Multi</a>
+        </div>
+      </div>
+
+      <!-- Bot + CRM Lite -->
+      <div class="plan">
+        <span class="plan-tier">Bot + CRM</span>
+        <h3 class="plan-name">Bot + CRM Lite</h3>
+        <p class="plan-desc">Para PyMEs que necesitan inbox unificado y automatizar.</p>
+        <div class="plan-price">
+          <span class="amount">$2,499</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Hasta <strong>2,000 mensajes / día</strong></li>
+          <li><strong>4 canales</strong> + bandeja unificada</li>
+          <li>IA de precisión media</li>
+          <li>Bandeja de entrada multi-canal</li>
+          <li>Asignación de conversaciones a tu equipo</li>
+          <li>Etiquetas, macros y automatizaciones</li>
+          <li>Reportes de ventas y atención</li>
+          <li>Integración con tu software vía API</li>
+          <li>Entrenamiento mensual continuo</li>
+          <li>Soporte por WhatsApp 24/7</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-ghost" href="#agendar">Empezar con Bot + CRM Lite</a>
+        </div>
+      </div>
+
+      <!-- Bot + CRM Pro (FEATURED) -->
+      <div class="plan featured">
+        <span class="badge">Recomendado</span>
+        <span class="plan-tier">Bot + CRM</span>
+        <h3 class="plan-name">Bot + CRM Pro</h3>
+        <p class="plan-desc">Equipos de ventas con reporting y SLA.</p>
+        <div class="plan-price">
+          <span class="amount">$4,999</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes</span>
+        </div>
+        <ul class="plan-features">
+          <li>Hasta <strong>8,000 mensajes / día</strong></li>
+          <li><strong>4 canales</strong> + bandeja unificada</li>
+          <li><strong>IA de alta precisión</strong> (modelo premium)</li>
+          <li>Bandeja multi-canal con SLA por equipo</li>
+          <li>Asignación, etiquetas, macros, automatizaciones</li>
+          <li>Reportes avanzados + embudos de conversión</li>
+          <li>Integración con tu software vía API + webhooks</li>
+          <li>Entrenamiento mensual continuo dedicado</li>
+          <li>Soporte por WhatsApp 24/7 + canal dedicado</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-primary" href="#agendar">Empezar con Bot + CRM Pro</a>
+        </div>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="plan">
+        <span class="plan-tier">A medida</span>
+        <h3 class="plan-name">Bot + CRM Enterprise</h3>
+        <p class="plan-desc">Multi-sucursal, integraciones a la medida, SLAs enterprise.</p>
+        <div class="plan-price">
+          <span class="amount">$9,999</span>
+          <span class="currency">MXN</span>
+          <span class="period">/ mes +</span>
+        </div>
+        <ul class="plan-features">
+          <li><strong>Mensajes ilimitados</strong></li>
+          <li>Canales custom + integraciones a la medida</li>
+          <li>IA dedicada y re-entrenamiento semanal</li>
+          <li>Multi-sucursal y permisos granulares</li>
+          <li>API y webhooks ilimitados</li>
+          <li>Soporte dedicado + account manager</li>
+          <li>Onboarding presencial (CDMX, Monterrey, GDL)</li>
+          <li>Personalización de marca</li>
+          <li>SLA contractual con tiempo de respuesta</li>
+        </ul>
+        <div class="plan-cta">
+          <a class="btn btn-ghost" href="#agendar">Cotizar Enterprise</a>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align: center; margin-top: 32px; color: var(--text-muted); font-size: 0.9375rem;">
+      Todos los precios en MXN, IVA no incluido. Pago mensual vía Stripe / Mercado Pago / transferencia.
+      <br>Sin contratos largos — cancelas cuando quieras.
+    </p>
+  </div>
+</section>
+
+<!-- ═══ How it works ═════════════════════════════════════ -->
+<section class="how" id="como-funciona" style="background: var(--bg-elevated);">
+  <div class="container">
+    <div class="section-header">
+      <h2>Cómo se pone en marcha</h2>
+      <p>De cero a operando en menos de 7 días.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3>Demo personalizada</h3>
+        <p>30 minutos. Te enseñamos cómo funcionaría el bot con tu tipo de negocio. Sin compromiso.</p>
+      </div>
+      <div class="step">
+        <h3>Entrenamiento</h3>
+        <p>Nos mandas tu menú, preguntas frecuentes, tono de voz. La IA aprende de tu información.</p>
+      </div>
+      <div class="step">
+        <h3>Conexión</h3>
+        <p>Vinculamos WhatsApp, Instagram, Messenger o Gmail de tu negocio en menos de 24 horas.</p>
+      </div>
+      <div class="step">
+        <h3>Live + reportes</h3>
+        <p>Ya activo 24/7. Ves cada conversación, cada venta, cada derivación a humano.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Demo CTA / Calendar ═══════════════════════════════ -->
+<section class="demo" id="agendar">
+  <div class="container">
+    <span class="eyebrow">30 minutos que pueden valer miles de pesos</span>
+    <h2>Agenda una demo gratuita</h2>
+    <p>Te enseñamos cómo funcionaria el bot con tu tipo de negocio. Resolvemos dudas. Sin compromiso.</p>
+
+    <div class="cta-row" style="justify-content: center; margin-bottom: 12px;">
+      <a class="btn btn-primary btn-lg"
+         href="https://calendly.com/dglezz1/chambeabot-demo"
+         target="_blank" rel="noopener">
+        Agendar ahora en Calendly →
+      </a>
+      <a class="btn btn-ghost btn-lg"
+         href="https://wa.me/525512345678?text=Hola%2C%20me%20interesa%20Chambeabot"
+         target="_blank" rel="noopener">
+        Escríbenos por WhatsApp
+      </a>
+    </div>
+
+    <div class="demo-cards">
+      <a class="demo-card" href="#contacto">
+        <div class="icon">@</div>
+        <div>
+          <h3>hola@chambeabot.com</h3>
+          <p>Respuesta en menos de 24 h hábiles</p>
+        </div>
+      </a>
+      <a class="demo-card" href="https://wa.me/525512345678" target="_blank" rel="noopener">
+        <div class="icon">W</div>
+        <div>
+          <h3>+52 55 1234 5678</h3>
+          <p>WhatsApp directo con un humano</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ════════════════════════════════════════════════ -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <div class="section-header">
+      <h2>Preguntas frecuentes</h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq">
+        <h3>¿Necesito conocimientos técnicos?</h3>
+        <p>No. Nosotros nos encargamos de configurar todo. Tú solo apruebas respuestas y nos mandas tu información.</p>
+      </div>
+      <div class="faq">
+        <h3>¿Qué pasa si el bot no sabe qué responder?</h3>
+        <p>Deriva la conversación a un humano automáticamente y tú recibes una notificación.</p>
+      </div>
+      <div class="faq">
+        <h3>¿Funciona con mi número actual de WhatsApp?</h3>
+        <p>Sí. Usamos WhatsApp Business API. Si tienes WhatsApp Business normal, lo migramos en 24 horas.</p>
+      </div>
+      <div class="faq">
+        <h3>¿Puedo cancelar cuando quiera?</h3>
+        <p>Sí. Sin contratos forzosos. Pausas o cancelas desde tu panel de cliente.</p>
+      </div>
+      <div class="faq">
+        <h3>¿Cuánto tarda en estar listo?</h3>
+        <p>De 3 a 7 días después de la firma. Depende de la velocidad con la que nos compartas tu información.</p>
+      </div>
+      <div class="faq">
+        <h3>¿Y si necesito algo custom?</h3>
+        <p>El plan Enterprise cubre integraciones a la medida. Para PyMEs, el plan Pro ya cubre el 95% de los casos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Lead form ══════════════════════════════════════════ -->
+<section class="lead-section" id="contacto">
+  <div class="container">
+    <div class="lead-card">
+      <h2>¿Prefieres que te contactemos?</h2>
+      <p class="lead-sub">Déjanos tus datos y un humano te escribe por WhatsApp en menos de 24 horas hábiles.</p>
+      <form id="lead-form" autocomplete="on" novalidate>
+        <div class="field-row">
+          <div class="field">
+            <label for="lead-name">Nombre completo *</label>
+            <input id="lead-name" name="name" type="text" required placeholder="Ana García" />
+          </div>
+          <div class="field">
+            <label for="lead-email">Email *</label>
+            <input id="lead-email" name="email" type="email" required placeholder="ana@tuempresa.mx" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="lead-phone">WhatsApp *</label>
+            <input id="lead-phone" name="phone" type="tel" required placeholder="+52 55 1234 5678" />
+          </div>
+          <div class="field">
+            <label for="lead-company">Empresa</label>
+            <input id="lead-company" name="company" type="text" placeholder="Cafetería La Esquina" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="lead-plan">¿Qué plan te interesa?</label>
+          <select id="lead-plan" name="plan">
+            <option value="">No estoy seguro todavía</option>
+            <option value="bot_starter">Bot Starter — $299/mes</option>
+            <option value="bot_pro">Bot Pro — $899/mes</option>
+            <option value="bot_multi">Bot Multi — $1,899/mes</option>
+            <option value="bot_crm_lite">Bot + CRM Lite — $2,499/mes</option>
+            <option value="bot_crm_pro">Bot + CRM Pro — $4,999/mes</option>
+            <option value="enterprise">Enterprise — $9,999+/mes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="lead-message">Cuéntanos un poco de tu negocio</label>
+          <textarea id="lead-message" name="message" placeholder="Vendemos café de especialidad en CDMX por WhatsApp e Instagram. Hoy atendemos manualmente y se nos escapan mensajes en la noche."></textarea>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit" style="width: 100%;">
+          Quiero que me contacten
+        </button>
+        <div id="lead-status" class="lead-status" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Footer ═══════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="brand">
+          <span class="brand-dot">C</span>
+          Chambeabot
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9375rem; margin-top: 12px; max-width: 320px;">
+          Atención al cliente 24/7 con bots de IA entrenados para tu negocio. Hecho en México 🇲🇽.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Producto</h4>
+        <ul>
+          <li><a href="#servicios">Servicios</a></li>
+          <li><a href="#crm">CRM</a></li>
+          <li><a href="#planes">Planes y precios</a></li>
+          <li><a href="#como-funciona">Cómo funciona</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Empresa</h4>
+        <ul>
+          <li><a href="#agendar">Agendar demo</a></li>
+          <li><a href="https://wa.me/525512345678" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="mailto:hola@chambeabot.com">hola@chambeabot.com</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Acceso clientes</h4>
+        <ul>
+          <li><a href="https://crm.chambeabot.com/app/auth/sign_in" target="_blank" rel="noopener">Iniciar sesión</a></li>
+          <li><a href="https://crm.chambeabot.com" target="_blank" rel="noopener">CRM</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Chambeabot. Todos los derechos reservados.</span>
+      <span>Hecho con ❤️ en México · <a href="mailto:hola@chambeabot.com">hola@chambeabot.com</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="/assets/main.js" defer></script>
+
 </body>
 </html>
