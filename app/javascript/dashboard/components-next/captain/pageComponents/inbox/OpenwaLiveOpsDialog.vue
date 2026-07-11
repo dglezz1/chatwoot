@@ -51,8 +51,17 @@ const statusLabel = computed(() => {
   }
 });
 
+// QR is only shown when the user explicitly requests a reconnect (qrReconnectRequested).
+// The default view shows the status pill + connect/disconnect button only. This matches
+// Chambeabot's flow where the session is pre-linked externally and the QR should never
+// appear in the live ops dialog.
+const qrReconnectRequested = ref(false);
+
 const showQr = computed(
-  () => qrCode.value && status.value.status !== 'ready'
+  () =>
+    qrReconnectRequested.value &&
+    qrCode.value &&
+    status.value.status !== 'ready'
 );
 
 const i18nKey = 'CAPTAIN.OPENWA_LIVE_OPS';
@@ -92,6 +101,8 @@ const fetchQr = async () => {
 const startSession = async () => {
   isWorking.value = true;
   qrError.value = null;
+  // Mark that the user wants a re-link — this gates the QR display via `showQr`.
+  qrReconnectRequested.value = true;
   try {
     const { data } = await axios.post(
       `/api/v2/whatsapp/openwa/channels/${props.channelId}/start`
@@ -111,7 +122,9 @@ const startSession = async () => {
 const stopSession = async () => {
   isWorking.value = true;
   try {
-    await axios.post(`/api/v2/whatsapp/openwa/channels/${props.channelId}/stop`);
+    await axios.post(
+      `/api/v2/whatsapp/openwa/channels/${props.channelId}/stop`
+    );
     qrCode.value = null;
     status.value = { status: 'stopped' };
   } catch (err) {
@@ -124,7 +137,9 @@ const stopSession = async () => {
 const refresh = async () => {
   isWorking.value = true;
   await fetchStatus();
-  if (status.value.status !== 'ready') {
+  // Only fetch the QR if the user explicitly requested a reconnect.
+  // Otherwise we just show the status pill + buttons.
+  if (qrReconnectRequested.value && status.value.status !== 'ready') {
     await fetchQr();
   } else {
     qrCode.value = null;
@@ -138,8 +153,10 @@ const startPolling = () => {
     await fetchStatus();
     if (status.value.status === 'ready') {
       qrCode.value = null;
+      qrReconnectRequested.value = false;
       stopPolling();
-    } else {
+    } else if (qrReconnectRequested.value) {
+      // Re-fetch QR only if the user is mid-reconnect.
       await fetchQr();
     }
   }, 4000);
@@ -153,10 +170,13 @@ const stopPolling = () => {
 };
 
 onMounted(async () => {
-  await refresh();
-  if (status.value.status !== 'ready') {
-    startPolling();
-  }
+  // Just fetch status — do NOT auto-poll the QR. The QR is only shown when
+  // the user explicitly clicks "reconnect" (qrReconnectRequested). Polling
+  // a session that's already linked via wa.me/phone would just fetch a stale
+  // QR and confuse the operator.
+  isWorking.value = true;
+  await fetchStatus();
+  isWorking.value = false;
 });
 
 onUnmounted(() => stopPolling());
@@ -251,7 +271,9 @@ defineExpose({ dialogRef });
           :is-loading="isWorking"
           @click="startSession"
         >
-          {{ showQr ? $t(`${i18nKey}.RESTART_SESSION`) : $t(`${i18nKey}.CONNECT`) }}
+          {{
+            showQr ? $t(`${i18nKey}.RESTART_SESSION`) : $t(`${i18nKey}.CONNECT`)
+          }}
         </Button>
       </div>
     </div>
