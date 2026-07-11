@@ -136,21 +136,25 @@ const stopSession = async () => {
 
 const refresh = async () => {
   isWorking.value = true;
-  // Capture the prior QR so we can keep showing it if the status call
-  // hits a transient error (the OpenWA internal connection from
-  // crm-web flakes ~1/3 of the time). Without this the user clicks
-  // Refresh and the QR disappears, even though the session is fine.
+  // Capture the prior QR + status so we can keep showing them if the
+  // status call hits a transient error (the OpenWA internal connection
+  // from crm-web flakes ~1/3 of the time on the /api/sessions/:id
+  // endpoint due to OpenWA's throttler). Without this, the user clicks
+  // Refresh and the status pill flips to "OpenWA no responde" even
+  // though the session is fine.
   const previousQr = qrCode.value;
   const previousStatus = status.value.status;
   await fetchStatus();
-  // Only fetch the QR if the user explicitly requested a reconnect.
-  // Otherwise we just show the status pill + buttons.
-  if (qrReconnectRequested.value && status.value.status !== 'ready') {
-    await fetchQr();
-  } else if (status.value.status === 'unreachable' && previousQr) {
-    // Status call failed but we had a QR — keep it.
+  const statusFlaked = status.value.status === 'unreachable' && previousStatus !== 'unreachable';
+  if (statusFlaked && previousQr) {
+    // Status call flaked but we had a QR + a previous good status.
+    // Restore both so the dialog keeps showing what the user last
+    // saw instead of a misleading "no responde" pill.
     qrCode.value = previousQr;
     status.value = { ...status.value, status: previousStatus };
+  } else if (qrReconnectRequested.value && status.value.status !== 'ready') {
+    // User explicitly asked for the QR; refresh it.
+    await fetchQr();
   } else {
     qrCode.value = null;
   }
