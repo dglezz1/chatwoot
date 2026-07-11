@@ -116,6 +116,15 @@ module Whatsapp
         end
 
         parsed
+      rescue StandardError => e
+        # Surface the actual transport error in the logs so we can debug
+        # intermittent "unreachable" status that occasionally appears on
+        # the dashboard even though OpenWA itself is healthy.
+        Rails.logger.warn(
+          "[Openwa::Client] #{method.upcase} #{path} failed: " \
+          "#{e.class.name}: #{e.message} (url=#{@api_base_url})"
+        )
+        raise Error, "#{e.class.name}: #{e.message}"
       end
     end
   end
