@@ -17,7 +17,23 @@ class Api::V2::Whatsapp::Openwa::LiveOpsController < Api::BaseController
 
   # GET /api/v2/whatsapp/openwa/channels/:channel_id  → status payload
   def status
-    render json: openwa_client.status
+    # OpenWA's GET /api/sessions/:id is throttled internally (~1/3 of
+    # calls return 429 even at light load). The dashboard calls this
+    # endpoint on every dialog open, every Refresh click, and from
+    # startSession/startPolling — so uncached, it blows through the
+    # throttle and the user sees flaky "OpenWA no responde" pill flips
+    # while the session is actually fine.
+    #
+    # Cache the response in Redis for 3 seconds. After a start!/stop!
+    # we bust the cache so the operator sees the transition immediately.
+    cache_key = "openwa:status:#{@channel.id}"
+    payload = Rails.cache.read(cache_key)
+    if payload.nil?
+      payload = openwa_client.status
+      # Don't cache transient failure — let the next call retry.
+      Rails.cache.write(cache_key, payload, expires_in: 3.seconds) if payload && payload[:status] != 'unreachable'
+    end
+    render json: payload
   end
 
   # POST /api/v2/whatsapp/openwa/channels/:channel_id/start
@@ -31,12 +47,16 @@ class Api::V2::Whatsapp::Openwa::LiveOpsController < Api::BaseController
       openwa_client.start!
       sleep 6 # give the WAWebJS client a moment to initialize
     end
+    # Bust the status cache so the next status poll sees the new state.
+    Rails.cache.delete("openwa:status:#{@channel.id}")
     render json: openwa_client.qr || { qrCode: nil, message: 'session has no QR yet' }
   end
 
   # POST /api/v2/whatsapp/openwa/channels/:channel_id/stop
   def stop
-    render json: openwa_client.stop!
+    result = openwa_client.stop!
+    Rails.cache.delete("openwa:status:#{@channel.id}")
+    render json: result
   end
 
   # GET /api/v2/whatsapp/openwa/channels/:channel_id/qr
