@@ -22,8 +22,15 @@ class Api::V2::Whatsapp::Openwa::LiveOpsController < Api::BaseController
 
   # POST /api/v2/whatsapp/openwa/channels/:channel_id/start
   def start
-    openwa_client.start!
-    sleep 6 # give the WAWebJS client a moment to initialize
+    # If the OpenWA session is already started (status=initializing or
+    # qr_ready), skip the start POST and just fetch the current QR. This
+    # makes the endpoint idempotent — re-clicking "Connect / show QR"
+    # from the dialog no longer returns a confusing 500.
+    status = openwa_client.status
+    unless %w[initializing qr_ready].include?(status[:status])
+      openwa_client.start!
+      sleep 6 # give the WAWebJS client a moment to initialize
+    end
     render json: openwa_client.qr || { qrCode: nil, message: 'session has no QR yet' }
   end
 
