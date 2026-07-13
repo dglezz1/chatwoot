@@ -352,6 +352,7 @@
     "CUSTOM_VIEWS_SEGMENTS": "Segments",
     "ALL_CONTACTS": "All Contacts",
     "TAGGED_WITH": "Tagged with",
+    "PIPELINE": "Pipeline",
     "NEW_LABEL": "New label",
     "NEW_TEAM": "New team",
     "NEW_INBOX": "New inbox",
@@ -950,6 +951,36 @@
       "DESCRIPTION": "Are you sure you want to delete this policy? This action cannot be undone.",
       "CONFIRM_BUTTON_LABEL": "Delete",
       "CANCEL_BUTTON_LABEL": "Cancel"
+    }
+  },
+  "PIPELINE": {
+    "TITLE": "Sales Pipeline",
+    "ALL_INBOXES": "All inboxes",
+    "REFRESH": "Refresh",
+    "CONVERSION": "conversion to won",
+    "CONTACTS_IN_BOARD": "contacts on the board",
+    "UNNAMED_CONTACT": "Unnamed contact",
+    "LAST_ACTIVITY": "Last activity",
+    "DROP_HERE": "Drop a contact here",
+    "LOAD_ERROR": "Could not load pipeline",
+    "MOVE_ERROR": "Could not move contact"
+  },
+  "CONVERSATION": {
+    "BOT_TOGGLE": {
+      "BOT_ACTIVE": "Bot active",
+      "BOT_PAUSED": "Bot paused",
+      "PAUSE": "Pause bot",
+      "RESUME": "Resume bot",
+      "PAUSED": "Bot paused on this conversation",
+      "RESUMED": "Bot resumed",
+      "PAUSED_AT": "Paused on",
+      "ERROR": "Could not toggle bot"
+    },
+    "PIPELINE": {
+      "STAGE": "Pipeline stage",
+      "STAGE_SELECT": "Move to stage",
+      "SEARCH": "Search stage…",
+      "NO_STAGE": "No stage"
     }
   }
 }
