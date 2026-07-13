@@ -982,5 +982,30 @@
       "SEARCH": "Search stage…",
       "NO_STAGE": "No stage"
     }
+  },
+  "LLM_PROVIDERS": {
+    "TITLE": "AI Providers",
+    "SUBTITLE": "Connect Chambeabot to MiniMax, OpenAI, OpenRouter or any OpenAI-compatible provider. API keys are encrypted at rest. Captain will use them for chat, audio transcription, image vision, and video understanding.",
+    "ADD": "Add provider",
+    "ADD_FIRST": "Set up the first one",
+    "ADD_TITLE": "Add AI provider",
+    "EDIT_TITLE": "Edit AI provider",
+    "PROVIDER": "Provider",
+    "LABEL": "Display label",
+    "API_BASE": "API base URL",
+    "API_KEY": "API Key",
+    "API_KEY_HINT": "Encrypted at rest with AES-256-GCM. Only you can see it.",
+    "MODELS": "Models (optional — auto-filled from preset)",
+    "SET_DEFAULT_LABEL": "Use as default for Captain",
+    "CANCEL": "Cancel",
+    "SAVE": "Save changes",
+    "CREATE": "Create provider",
+    "VALIDATE": "Validate",
+    "SET_DEFAULT": "Set as default",
+    "EDIT": "Edit",
+    "DELETE": "Delete",
+    "EMPTY": "No providers configured. Captain will use the system environment variables as fallback.",
+    "SAVED": "Provider saved",
+    "SAVE_ERROR": "Could not save provider"
   }
 }
