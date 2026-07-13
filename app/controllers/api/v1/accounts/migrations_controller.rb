@@ -1,4 +1,4 @@
-class Api::V1::Accounts::MigrateController < Api::V1::Accounts::BaseController
+class Api::V1::Accounts::MigrationsController < Api::V1::Accounts::BaseController
   # One-off migration trigger. POST /api/v1/accounts/:id/migrate/run
   # Runs db:migrate in the running process. Useful when preDeployCommand
   # hasn't run for whatever reason.

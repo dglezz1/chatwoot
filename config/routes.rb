@@ -266,13 +266,9 @@ Rails.application.routes.draw do
             resources :contacts, only: [:index, :update]
           end
 
-          # One-off runtime migration trigger. See Api::V1::Accounts::MigrateController.
+          # One-off runtime migration trigger. See Api::V1::Accounts::MigrationsController.
           # Useful when preDeployCommand didn't run on the latest deploy.
-          scope :migrate, only: [] do
-            collection do
-              post :run
-            end
-          end
+          post 'migrate/run', to: 'migrations#run'
 
           # LLM provider registry — per-account OpenAI-compatible endpoints
           # (MiniMax, OpenAI, OpenRouter, Together, Groq, Gemini, Anthropic,
