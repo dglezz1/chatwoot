@@ -268,8 +268,10 @@ Rails.application.routes.draw do
 
           # One-off runtime migration trigger. See Api::V1::Accounts::MigrateController.
           # Useful when preDeployCommand didn't run on the latest deploy.
-          scope :migrate do
-            post :run, on: :collection
+          scope :migrate, only: [] do
+            collection do
+              post :run
+            end
           end
 
           # LLM provider registry — per-account OpenAI-compatible endpoints
