@@ -16,7 +16,7 @@ class Api::V1::Accounts::LlmProvidersController < Api::V1::Accounts::BaseControl
       defaults = LlmProviderSetting::PROVIDER_DEFAULTS[slug] || {}
       {
         slug: slug,
-        label: defaults['label'] || slug.titleize,
+        label: defaults['label'] || slug.split('_').map(&:capitalize).join(' '),
         api_base: defaults['api_base'],
         default_chat_model: defaults['chat_model'],
         default_vision_model: defaults['vision_model'],
