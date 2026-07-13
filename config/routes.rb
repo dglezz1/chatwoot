@@ -91,6 +91,20 @@ Rails.application.routes.draw do
             resources :assistant_responses
             resources :message_reports, only: [:create]
             resources :bulk_actions, only: [:create]
+
+            # Per-conversation Bot/Human toggle. The operator clicks
+            # "Pausar bot" in the chat sidebar; Captain stops responding
+            # on that thread until the operator toggles it back on.
+            # POST   /api/v1/accounts/:account_id/captain/conversations/:id/pause
+            # DELETE /api/v1/accounts/:account_id/captain/conversations/:id/pause
+            # GET    /api/v1/accounts/:account_id/captain/conversations/:id/status
+            resources :conversations, only: [] do
+              member do
+                post :pause
+                delete :pause, action: :resume
+                get :status
+              end
+            end
             resources :copilot_threads, only: [:index, :create] do
               resources :copilot_messages, only: [:index, :create]
             end
@@ -246,6 +260,12 @@ Rails.application.routes.draw do
               patch :update if ChatwootApp.enterprise?
             end
           end
+
+          # Pipeline (Kanban) — Chambeabot sales/CRM view
+          namespace :pipeline do
+            resources :contacts, only: [:index, :update]
+          end
+
           resources :applied_slas, only: [:index] do
             collection do
               get :metrics

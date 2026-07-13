@@ -19,6 +19,13 @@ module Enterprise::MessageTemplates::HookExecutionService
     return false unless inbox&.captain_assistant.present?
     return false if inbox&.name.blank?
 
+    # Per-conversation pause: a human agent has explicitly handed the
+    # thread off to themselves via the Bot/Human toggle in the chat
+    # sidebar. Storing the flag on `additional_attributes` means we
+    # don't need a schema change — and it survives Captain state
+    # being reset on the inbox.
+    return false if conversation.additional_attributes&.dig('captain_paused') == true
+
     # V2 ownership rule (preserved from prior safety pass).
     captain_inbox = inbox.captain_assistant&.captain_inboxes&.first
     return false if captain_inbox.present?

@@ -92,10 +92,28 @@ class Captain::Assistant < ApplicationRecord
   end
 
   def agent_tools
-    [
-      self.class.resolve_tool_class('faq_lookup').new(self),
-      self.class.resolve_tool_class('handoff').new(self)
+    # The tools listed in config/agents/tools.yml that have a corresponding
+    # Captain::Tools::{Name}Tool class are exposed to the LLM by default.
+    # Operators can layer more on top via the Scenarios UI (the scenario's
+    # `tools` field is added to its own agent; we use `default_tools` here
+    # so every scenario inherits the same baseline set).
+    tool_ids = %w[
+      faq_lookup
+      handoff
+      add_contact_note
+      add_private_note
+      update_priority
+      add_label_to_conversation
+      resolve_conversation
+      add_stage
     ]
+
+    tool_ids.filter_map do |id|
+      tool_class = self.class.resolve_tool_class(id)
+      next if tool_class.nil?
+
+      tool_class.new(self)
+    end
   end
 
   def prompt_context

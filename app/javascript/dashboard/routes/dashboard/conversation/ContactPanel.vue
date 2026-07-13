@@ -21,6 +21,8 @@ import SharedFiles from './SharedFiles.vue';
 import Draggable from 'vuedraggable';
 import MacrosList from './Macros/List.vue';
 import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
+import BotHumanToggle from 'dashboard/components-next/conversation/BotHumanToggle.vue';
+import PipelineStageBadge from 'dashboard/components-next/conversation/PipelineStageBadge.vue';
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
 import LinearIssuesList from 'dashboard/components/widgets/conversation/linear/IssuesList.vue';
 import LinearSetupCTA from 'dashboard/components/widgets/conversation/linear/LinearSetupCTA.vue';
@@ -138,6 +140,15 @@ onMounted(() => {
       @close="closeContactPanel"
     />
     <ContactInfo :contact="contact" :channel-type="channelType" />
+    <BotHumanToggle
+      v-if="currentChat"
+      :conversation-id="currentChat.id"
+      :inbox-id="currentChat.inbox_id"
+    />
+    <PipelineStageBadge
+      v-if="contact"
+      :contact-id="contact.id"
+    />
     <div class="px-2 pb-8 list-group">
       <Draggable
         :list="conversationSidebarItems"

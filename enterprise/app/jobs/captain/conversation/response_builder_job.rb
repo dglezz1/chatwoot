@@ -54,6 +54,11 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     return false if msg.content.blank?
     return false if inbox&.respond_to?(:captain_assistant) && inbox.captain_assistant.nil?
     return false if inbox&.channel_type == 'Channel::Whatsapp' && whatsapp_chat_suffix(msg)&.in?(%w[@g.us @broadcast])
+    # Per-conversation pause: a human has explicitly taken over the
+    # thread via the Bot/Human toggle. The hook layer also checks this;
+    # we duplicate here so jobs enqueued outside the hook path
+    # (automations, cron, console) also respect the pause.
+    return false if convo.additional_attributes&.dig('captain_paused') == true
 
     true
   end

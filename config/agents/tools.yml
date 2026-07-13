@@ -39,3 +39,7 @@
   title: 'Handoff to Human'
   description: 'Hand off the conversation to a human agent'
   icon: 'user-switch'
+- id: add_stage
+  title: 'Move Contact to Pipeline Stage'
+  description: 'Move a contact to a configured pipeline stage (e.g. nuevo, calificado, cita agendada, ganado, perdido)'
+  icon: 'arrow-right-circle'

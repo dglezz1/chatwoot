@@ -570,6 +570,13 @@ const menuItems = computed(() => {
             ],
           })),
         },
+        {
+          name: 'Pipeline',
+          icon: 'i-lucide-kanban-square',
+          label: t('SIDEBAR.PIPELINE', { defaultValue: 'Pipeline' }),
+          to: accountScopedRoute('pipeline_index'),
+          activeOn: ['pipeline_index'],
+        },
       ],
     },
     {
