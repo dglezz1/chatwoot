@@ -49,7 +49,19 @@ module OperatorAgent
 
     def self.find_tool_class(name)
       return name if name.is_a?(Class)
-      name.to_s.safe_constantize
+
+      # Pending actions store the short tool name ("update_label").
+      # The class lives at OperatorAgent::Tools::UpdateLabelTool.
+      # Walk the registry and match on the short name.
+      tool_class_names.each do |full_name|
+        klass = full_name.safe_constantize
+        next unless klass
+        short = klass.name.demodulize.delete_suffix('Tool').underscore
+        return klass if short == name.to_s
+        # Also match the agents-gem name (operator_agent--tools--update_label)
+        return klass if klass.allocate.name == name.to_s
+      end
+      nil
     end
   end
 end
