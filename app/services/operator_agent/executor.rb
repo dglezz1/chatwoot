@@ -73,17 +73,6 @@ module OperatorAgent
       output = agent_result.respond_to?(:output) ? agent_result.output : agent_result
       tool_calls = extract_tool_calls(agent_result)
 
-      # Detailed debug — log every context key + first 200 chars of each
-      if agent_result.respond_to?(:context) && agent_result.context
-        ctx_keys = agent_result.context.keys
-        Rails.logger.info "[OperatorAgent::Executor] ctx_keys=#{ctx_keys.inspect}"
-        ctx_keys.each do |k|
-          v = agent_result.context[k]
-          Rails.logger.info "[OperatorAgent::Executor]   #{k}=#{v.inspect[0, 200]}"
-        end
-      end
-      Rails.logger.info "[OperatorAgent::Executor] output=#{output.inspect[0,200]} tool_calls=#{tool_calls.inspect[0,400]}"
-
       {
         output: output,
         tool_calls: tool_calls,
@@ -91,17 +80,19 @@ module OperatorAgent
       }
     end
 
+    # The agents gem (ai-agents 0.12) does not surface tool_calls
+    # directly on the result. They live inside context[:conversation_history]
+    # as the last assistant message's :tool_calls array.
     def extract_tool_calls(agent_result)
       return [] unless agent_result.respond_to?(:context)
 
-      ctx = agent_result.context || {}
-      tc = ctx[:last_tool_calls] ||
-           ctx[:tool_calls] ||
-           ctx[:last_tool_results] ||
-           ctx[:tool_results] ||
-           ctx[:messages]&.select { |m| m[:role] == :tool || m['role'] == 'tool' } ||
-           []
-      Array(tc)
+      history = agent_result.context&.dig(:conversation_history) || []
+      # Walk backwards to find the most recent assistant message with tool_calls
+      history.reverse.each do |msg|
+        tc = msg[:tool_calls] || msg['tool_calls']
+        return Array(tc) if tc.present?
+      end
+      []
     end
 
     def extract_pending_action(tool_calls)
