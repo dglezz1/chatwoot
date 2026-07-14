@@ -34,13 +34,14 @@ class Api::V1::Accounts::OperatorAgent::MessagesController < Api::V1::Accounts::
     content = message_params[:content].to_s.strip
     return render json: { error: 'Message content is required' }, status: :unprocessable_entity if content.blank?
 
-    @message = OperatorAgent::Executor.new(
-      thread: @thread,
-      user_message: content
-    ).perform
+    @message = @thread.messages.create!(
+      role: 'user',
+      content: content,
+      status: 'complete'
+    )
+    @message.enqueue_response_job
 
-    @pending_actions = @message.pending_actions.where(status: 'awaiting_confirmation')
-    render json: message_response_payload, status: :created
+    render json: message_response_payload, status: :accepted
   rescue StandardError => e
     Rails.logger.error "[OperatorAgent::MessagesController#create] #{e.class.name}: #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")

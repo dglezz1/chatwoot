@@ -72,4 +72,8 @@ class OperatorAgent::Message < ApplicationRecord
       tool_call_id: tool_call_id
     }.compact
   end
+
+  def enqueue_response_job
+    OperatorAgent::ResponseJob.perform_later(message_id: id)
+  end
 end
