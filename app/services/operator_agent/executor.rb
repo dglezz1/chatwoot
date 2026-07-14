@@ -33,7 +33,8 @@ module OperatorAgent
       tool_calls = result[:tool_calls] || []
 
       assistant_msg = persist_assistant_response(result, tool_calls)
-      handle_pending_actions(result, assistant_msg) if result[:pending_action].present?
+      drain_pending_queue(assistant_msg)
+      mark_pending_actions_in_message(assistant_msg) if result[:pending_action].present?
 
       audit_tool_calls(tool_calls)
       assistant_msg
@@ -192,6 +193,24 @@ module OperatorAgent
         tool_args: pa[:tool_args] || pa['tool_args'] || {},
         status: 'awaiting_confirmation'
       )
+    end
+
+    def drain_pending_queue(assistant_msg)
+      pending = OperatorAgent::Tools::BaseTool.drain_pending_queue
+      pending.each do |item|
+        OperatorAgent::PendingAction.create!(
+          message: assistant_msg,
+          tool_name: item[:tool_name],
+          tool_args: item[:tool_args] || {},
+          status: 'awaiting_confirmation'
+        )
+      end
+    end
+
+    def mark_pending_actions_in_message(assistant_msg)
+      # No-op for now; the PendingAction rows are already created by
+      # drain_pending_queue. The marker info in the tool_call result
+      # remains for the audit log.
     end
 
     def audit_tool_calls(tool_calls)

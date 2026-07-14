@@ -66,19 +66,46 @@ class OperatorAgent::Tools::BaseTool < Agents::Tool
     content.to_s
   end
 
-  # Returns a string with a special marker that the executor parses
-  # into a PendingAction row. The marker is on a single line at the
-  # start so the executor can split it cleanly:
-  #   PENDING_ACTION|<json_payload>
-  # The rest of the string (after the marker) is the human-readable
-  # summary the LLM will see and rephrase to the operator.
-  def pending(tool_name, tool_args, summary)
+  # Persist a pending action and return the marker string for the LLM.
+  # The agents gem (ai-agents 0.12) doesn't surface tool return values
+  # in the tool_calls hash, so the executor can't see our PENDING_ACTION
+  # marker. Instead, the tool writes the row directly. The marker
+  # string still goes back to the LLM as the tool's return value so
+  # the LLM can tell the operator "Action queued — confirm in the UI".
+  def pending(tool_name, tool_args, summary, message: nil)
+    # The tool runs in the executor's context. The executor passes
+    # @user_message implicitly via the instance variables already set
+    # in perform. We need the assistant message to attach the
+    # pending action to. The tool_context may carry a pending_message
+    # reference; if not, we defer to the executor to create the row
+    # via a thread-local queue.
     payload = JSON.dump(tool_name: tool_name.to_s, tool_args: tool_args.stringify_keys, summary: summary.to_s)
+
+    # Queue the pending action via thread-local; the executor drains
+    # the queue at the end of run_with_tools and persists the rows.
+    OperatorAgent::Tools::BaseTool.pending_queue << {
+      tool_name: tool_name.to_s,
+      tool_args: tool_args.stringify_keys,
+      summary: summary.to_s
+    }
+
     "PENDING_ACTION|#{payload}\n#{summary}"
   end
 
   def err(message)
     "ERROR: #{message}"
+  end
+
+  # Thread-local FIFO of pending action rows to be created by the
+  # executor at the end of the run. Cleared after each run.
+  def self.pending_queue
+    Thread.current[:operator_agent_pending_queue] ||= []
+  end
+
+  def self.drain_pending_queue
+    q = pending_queue
+    Thread.current[:operator_agent_pending_queue] = []
+    q
   end
 end
 
