@@ -67,6 +67,8 @@ class Account < ApplicationRecord
   has_many :macros, dependent: :destroy_async
   has_many :campaigns, dependent: :destroy_async
   has_many :canned_responses, dependent: :destroy_async
+  has_many :operator_agent_threads, class_name: 'OperatorAgent::Thread', dependent: :destroy_async
+  has_many :operator_agent_action_logs, class_name: 'OperatorAgent::ActionLog', dependent: :destroy_async
   has_many :categories, dependent: :destroy_async, class_name: '::Category'
   has_many :contacts, dependent: :destroy_async
   has_many :conversations, dependent: :destroy_async
