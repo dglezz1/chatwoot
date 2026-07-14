@@ -8,7 +8,7 @@ class OperatorAgent::Tools::BindCaptainAssistantTool < OperatorAgent::Tools::Bas
   param :inbox_id, type: 'integer', desc: 'The inbox ID to bind the assistant to', required: true
   param :auto_reply_mode, type: 'string', desc: 'Auto-reply mode: "ai" (default) or "off"', required: false
 
-  def perform(tool_context, captain_assistant_id:, inbox_id:, auto_reply_mode: 'ai)
+  def perform(tool_context, captain_assistant_id:, inbox_id:, auto_reply_mode: 'ai')
     assistant = Captain::Assistant.where(account_id: @account.id).find_by(id: captain_assistant_id)
     return err("Captain assistant ##{captain_assistant_id} not found in this account.") unless assistant
 
