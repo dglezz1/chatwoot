@@ -56,9 +56,10 @@ class Llm::BaseAiService
     route&.dig(:source) == :account_override
   end
 
-  def installation_model
-    InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
-  end
+    def installation_model
+      ENV['CAPTAIN_OPEN_AI_MODEL'].presence ||
+        InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
+    end
 
   def setup_temperature
     @temperature = DEFAULT_TEMPERATURE

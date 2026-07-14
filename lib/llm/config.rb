@@ -64,7 +64,7 @@ module Llm::Config
     # call. Adding it to the in-memory registry skips validation while still
     # routing through the openai provider (which uses our `openai_api_base`).
     def register_custom_model_with_ruby_llm
-      custom_model = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
+      custom_model = system_model
       return if custom_model.blank?
       return if RubyLLM::Models.instance.all.any? { |m| m.id == custom_model }
 
@@ -73,12 +73,22 @@ module Llm::Config
       Rails.logger.warn "[Llm::Config] failed to register custom model: #{e.message}"
     end
 
+    # ENV-first read with InstallationConfig fallback. ENV wins so the same
+    # code runs in both Railway (env-only) and self-hosted (DB) modes without
+    # coordination. Mirrors the same pattern in ai_agents.rb.
     def system_api_key
-      InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
+      ENV['CAPTAIN_OPEN_AI_API_KEY'].presence ||
+        InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
     end
 
     def openai_endpoint
-      InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
+      ENV['CAPTAIN_OPEN_AI_ENDPOINT'].presence ||
+        InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
+    end
+
+    def system_model
+      ENV['CAPTAIN_OPEN_AI_MODEL'].presence ||
+        InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
     end
   end
 end
