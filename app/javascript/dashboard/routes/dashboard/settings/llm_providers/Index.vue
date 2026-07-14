@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, watch, nextTick, onMounted, computed, reactive } from 'vue';
 import { useStore } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
@@ -13,6 +13,17 @@ import ProviderList from 'dashboard/components-next/captain/pageComponents/llm_p
 
 const { t } = useI18n();
 const store = useStore();
+const formDialogRef = ref(null);
+
+// Open the native <dialog> when the v-if condition flips to true.
+// The ProviderFormDialog auto-mounts on isDialogOpen=true (v-if),
+# so we wait one tick for the template ref to be bound, then call
+# .open() on its inner dialogRef (which calls showModal()).
+watch(isDialogOpen, async open => {
+  if (!open) return;
+  await nextTick();
+  formDialogRef.value?.open?.();
+});
 
 const providers = ref([]);
 const available = ref([]);
@@ -140,6 +151,7 @@ onMounted(loadProviders);
 
     <ProviderFormDialog
       v-if="isDialogOpen"
+      ref="formDialogRef"
       :provider="editingProvider"
       :available="available"
       @close="isDialogOpen = false"

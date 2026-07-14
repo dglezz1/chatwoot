@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import LlmProvidersAPI from 'dashboard/api/llmProviders';
@@ -71,11 +71,6 @@ onMounted(async () => {
   } else {
     applyPreset('minimax');
   }
-  // Auto-open the dialog once mounted. The parent renders this component
-  // via v-if so by the time onMounted runs, dialogRef is in scope.
-  nextTick(() => {
-    dialogRef.value?.open?.();
-  });
 });
 
 const onProviderChange = () => applyPreset(form.value.provider);
@@ -103,6 +98,8 @@ const save = async () => {
     isSaving.value = false;
   }
 };
+
+defineExpose({ open: () => dialogRef.value?.open?.() });
 </script>
 
 <template>
