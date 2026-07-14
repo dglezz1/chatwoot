@@ -125,6 +125,17 @@ Rails.application.routes.draw do
               post :follow_up
             end
           end
+
+          # Operator Agent — in-dashboard AI agent that lets an operator
+          # configure the CRM (inboxes, contacts, bots, flows) via chat.
+          # Phase 1 (read-only): threads + messages + capabilities.
+          # Phase 2 (write): pending actions + confirm/cancel endpoints.
+          namespace :operator_agent do
+            resources :threads, only: [:index, :create, :show, :destroy] do
+              resources :messages, only: [:index, :create]
+            end
+            get :capabilities, to: 'capabilities#index'
+          end
           resource :saml_settings, only: [:show, :create, :update, :destroy]
           resources :agent_bots, only: [:index, :create, :show, :update, :destroy] do
             delete :avatar, on: :member
