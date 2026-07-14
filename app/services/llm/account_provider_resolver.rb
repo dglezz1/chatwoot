@@ -9,16 +9,16 @@ module Llm
   #
   # Env vars consumed:
   #   CAPTAIN_OPEN_AI_API_KEY    — required, the API key
-  #   CAPTAIN_OPEN_AI_ENDPOINT   — required, e.g. https://api.minimaxi.com/v1
-  #   CAPTAIN_OPEN_AI_MODEL      — required, default chat model
-  #   CAPTAIN_VISION_MODEL       — optional, vision model (defaults to chat model)
-  #   CAPTAIN_AUDIO_MODEL        — optional, audio transcription model
-  #   CAPTAIN_EMBEDDING_MODEL    — optional, RAG embedding model
-  #   CAPTAIN_PROVIDER_SLUG      — optional, display name (e.g. "minimax")
-  #
-  # If CAPTAIN_PROVIDER_SLUG is not set, the slug is auto-detected
-  # from the endpoint URL (api.minimaxi.com → "minimax",
-  # api.openai.com → "openai", everything else → "openai_compatible").
+#   CAPTAIN_OPEN_AI_ENDPOINT   — required, e.g. https://api.minimax.io/v1
+#   CAPTAIN_OPEN_AI_MODEL      — required, default chat model (e.g. MiniMax-M3)
+#   CAPTAIN_VISION_MODEL       — optional, vision model (defaults to chat model)
+#   CAPTAIN_AUDIO_MODEL        — optional, audio transcription model
+#   CAPTAIN_EMBEDDING_MODEL    — optional, RAG embedding model
+#   CAPTAIN_PROVIDER_SLUG      — optional, display name (e.g. "minimax")
+#
+# If CAPTAIN_PROVIDER_SLUG is not set, the slug is auto-detected
+# from the endpoint URL (api.minimax.io or api.minimaxi.com → "minimax",
+# api.openai.com → "openai", everything else → "openai_compatible").
   #
   # The returned hash is the same shape the previous version returned,
   # so callers (audio transcription, image/video, etc.) don't need
@@ -57,7 +57,7 @@ module Llm
       return explicit if explicit.present?
 
       host = endpoint.downcase
-      return 'minimax'             if host.include?('minimaxi.com') || host.include?('minimax.com')
+      return 'minimax'             if host.include?('minimax.io') || host.include?('minimaxi.com') || host.include?('minimax.com')
       return 'openai'              if host.include?('api.openai.com')
       return 'anthropic'           if host.include?('anthropic.com')
       return 'gemini'              if host.include?('googleapis.com') || host.include?('generativelanguage')
