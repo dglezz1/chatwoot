@@ -19,6 +19,8 @@ class Api::V1::Accounts::OperatorAgent::ThreadsController < Api::V1::Accounts::B
       user: Current.user,
       title: thread_params[:title].presence || 'Nueva conversación'
     )
+    render json: { id: @thread.id, title: @thread.title, created_at: @thread.created_at },
+           status: :created
   end
 
   def destroy
