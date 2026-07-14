@@ -16,13 +16,13 @@ class Api::V1::Accounts::LlmProvidersController < Api::V1::Accounts::BaseControl
       defaults = LlmProviderSetting::PROVIDER_DEFAULTS[slug] || {}
       result = {
         slug: slug,
-        label: defaults['label'] || slug.split('_').map(&:capitalize).join(' '),
-        api_base: defaults['api_base'],
-        default_chat_model: defaults['chat_model'],
-        default_vision_model: defaults['vision_model'],
-        default_audio_transcription_model: defaults['audio_transcription_model'],
-        default_embedding_model: defaults['embedding_model'],
-        capabilities: defaults['capabilities'] || {}
+        label: defaults[:label] || slug.split('_').map(&:capitalize).join(' '),
+        api_base: defaults[:api_base],
+        default_chat_model: defaults[:chat_model],
+        default_vision_model: defaults[:vision_model],
+        default_audio_transcription_model: defaults[:audio_transcription_model],
+        default_embedding_model: defaults[:embedding_model],
+        capabilities: defaults[:capabilities] || {}
       }
       result
     end
