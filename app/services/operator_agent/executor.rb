@@ -73,7 +73,16 @@ module OperatorAgent
       output = agent_result.respond_to?(:output) ? agent_result.output : agent_result
       tool_calls = extract_tool_calls(agent_result)
 
-      Rails.logger.info "[OperatorAgent::Executor] agent_result.class=#{agent_result.class} output=#{output.inspect[0,200]} tool_calls=#{tool_calls.inspect[0,400]}"
+      # Detailed debug — log every context key + first 200 chars of each
+      if agent_result.respond_to?(:context) && agent_result.context
+        ctx_keys = agent_result.context.keys
+        Rails.logger.info "[OperatorAgent::Executor] ctx_keys=#{ctx_keys.inspect}"
+        ctx_keys.each do |k|
+          v = agent_result.context[k]
+          Rails.logger.info "[OperatorAgent::Executor]   #{k}=#{v.inspect[0, 200]}"
+        end
+      end
+      Rails.logger.info "[OperatorAgent::Executor] output=#{output.inspect[0,200]} tool_calls=#{tool_calls.inspect[0,400]}"
 
       {
         output: output,
@@ -90,6 +99,7 @@ module OperatorAgent
            ctx[:tool_calls] ||
            ctx[:last_tool_results] ||
            ctx[:tool_results] ||
+           ctx[:messages]&.select { |m| m[:role] == :tool || m['role'] == 'tool' } ||
            []
       Array(tc)
     end
