@@ -1,116 +1,114 @@
 module Llm
-  # Resolves the effective LLM provider for an account + feature.
+  # Resolves the effective LLM provider for a feature.
   #
-  # Lookup order:
-  #   1. Per-account LlmProviderSetting marked is_default=true (operator
-  #      has explicitly configured MiniMax, OpenAI, etc.)
-  #   2. Per-account LlmProviderSetting (any enabled one)
-  #   3. System-wide InstallationConfig (CAPTAIN_OPEN_AI_* env vars)
+  # The LLM API key is read from environment variables ONLY — never
+  # from the database. This is a deliberate security choice: Railway
+  # encrypts env vars at rest in the project vault, secrets are
+  # rotated in one place, and there's no risk of an ex-employee
+  # walking off with a database dump containing active keys.
   #
-  # The returned hash contains the api_key, api_base, model, and the
-  # provider slug — enough to make a call to the right endpoint.
+  # Env vars consumed:
+  #   CAPTAIN_OPEN_AI_API_KEY    — required, the API key
+  #   CAPTAIN_OPEN_AI_ENDPOINT   — required, e.g. https://api.minimaxi.com/v1
+  #   CAPTAIN_OPEN_AI_MODEL      — required, default chat model
+  #   CAPTAIN_VISION_MODEL       — optional, vision model (defaults to chat model)
+  #   CAPTAIN_AUDIO_MODEL        — optional, audio transcription model
+  #   CAPTAIN_EMBEDDING_MODEL    — optional, RAG embedding model
+  #   CAPTAIN_PROVIDER_SLUG      — optional, display name (e.g. "minimax")
+  #
+  # If CAPTAIN_PROVIDER_SLUG is not set, the slug is auto-detected
+  # from the endpoint URL (api.minimaxi.com → "minimax",
+  # api.openai.com → "openai", everything else → "openai_compatible").
+  #
+  # The returned hash is the same shape the previous version returned,
+  # so callers (audio transcription, image/video, etc.) don't need
+  # to change.
   class AccountProviderResolver
-    PROVIDER_KEYS = {
-      'minimax'             => 'CAPTAIN_OPEN_AI_API_KEY',
-      'openai'              => 'CAPTAIN_OPEN_AI_API_KEY',
-      'openrouter'          => 'CAPTAIN_OPEN_AI_API_KEY',
-      'together'            => 'CAPTAIN_OPEN_AI_API_KEY',
-      'groq'                => 'CAPTAIN_OPEN_AI_API_KEY',
-      'anthropic'           => 'CAPTAIN_ANTHROPIC_API_KEY',
-      'gemini'              => 'CAPTAIN_GEMINI_API_KEY',
-      'local'               => 'CAPTAIN_OPEN_AI_API_KEY',
-      'openai_compatible'   => 'CAPTAIN_OPEN_AI_API_KEY'
-    }.freeze
-
     def self.resolve(feature:, account: nil)
-      new(feature: feature, account: account).resolve
+      new(feature: feature).resolve
     end
 
-    def initialize(feature:, account: nil)
+    def initialize(feature:)
       @feature = feature.to_s
-      @account = account
     end
 
     def resolve
-      provider = find_provider
+      api_key  = ENV['CAPTAIN_OPEN_AI_API_KEY'].to_s
+      endpoint = ENV['CAPTAIN_OPEN_AI_ENDPOINT'].to_s
+      chat     = ENV['CAPTAIN_OPEN_AI_MODEL'].to_s
+
+      return missing_config_payload if api_key.empty? || endpoint.empty? || chat.empty?
 
       {
         feature: @feature,
-        provider: provider[:slug],
-        api_key: provider[:api_key],
-        api_base: provider[:api_base]&.chomp('/'),
-        model: provider[:model],
-        source: provider[:source],
-        capabilities: provider[:capabilities] || {}
+        provider: detect_provider_slug(endpoint),
+        api_key: api_key,
+        api_base: endpoint.chomp('/'),
+        model: model_for_feature(chat),
+        source: :env,
+        capabilities: capabilities_for(slug: detect_provider_slug(endpoint))
       }
     end
 
     private
 
-    def find_provider
-      settings = LlmProviderSetting.default_for(@account) if @account
-      return account_provider(settings) if settings.present?
+    def detect_provider_slug(endpoint)
+      explicit = ENV['CAPTAIN_PROVIDER_SLUG'].to_s
+      return explicit if explicit.present?
 
-      system_provider
+      host = endpoint.downcase
+      return 'minimax'             if host.include?('minimaxi.com') || host.include?('minimax.com')
+      return 'openai'              if host.include?('api.openai.com')
+      return 'anthropic'           if host.include?('anthropic.com')
+      return 'gemini'              if host.include?('googleapis.com') || host.include?('generativelanguage')
+      return 'groq'                if host.include?('groq.com')
+      return 'openrouter'          if host.include?('openrouter.ai')
+      return 'together'            if host.include?('together.xyz')
+      return 'local'               if host.include?('localhost') || host.include?('127.0.0.1') || host.start_with?('http://')
+
+      'openai_compatible'
     end
 
-    def account_provider(settings)
-      effective = settings.effective_settings
-      model_key = model_field_for_feature(@feature)
-      model = effective[model_key]
-
-      {
-        slug: settings.provider,
-        api_key: settings.api_key,
-        api_base: effective[:api_base],
-        model: model,
-        source: :account_provider,
-        capabilities: effective[:capabilities]
-      }
-    end
-
-    def system_provider
-      endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value.presence
-      api_key = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value.presence
-      model = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence
-
-      slug = if endpoint&.include?('minimaxi.com') || endpoint&.include?('minimax.com')
-               'minimax'
-             elsif endpoint.blank? || endpoint.include?('api.openai.com')
-               'openai'
-             else
-               'openai_compatible'
-             end
-
-      {
-        slug: slug,
-        api_key: api_key,
-        api_base: endpoint,
-        model: model || Llm::Config::DEFAULT_MODEL,
-        source: :system_config,
-        capabilities: default_capabilities(slug)
-      }
-    end
-
-    def model_field_for_feature(feature)
-      # Maps a feature key to the field on LlmProviderSetting.effective_settings
-      # that should be used. Audio uses a separate transcription model;
-      # help_center_search uses an embedding model. Everything else uses
-      # vision_model if the LLM is multimodal-aware, else chat_model.
-      case feature
-      when 'audio_transcription' then :audio_transcription_model
-      when 'help_center_search'   then :embedding_model
-      when 'assistant', 'editor', 'label_suggestion',
-           'reply_suggestion', 'summary', 'follow_up', 'rewrite',
-           'pdf_faq_generation'
-        :chat_model
+    def model_for_feature(chat_default)
+      case @feature
+      when 'audio_transcription' then ENV['CAPTAIN_AUDIO_MODEL'].presence || chat_default
+      when 'help_center_search'   then ENV['CAPTAIN_EMBEDDING_MODEL'].presence || chat_default
       else
-        :vision_model
+        # Vision-capable LLM calls use the vision model when the
+        # provider supports it, falling back to the chat model.
+        ENV['CAPTAIN_VISION_MODEL'].presence || chat_default
       end
     end
 
-    def default_capabilities(slug)
-      LlmProviderSetting::PROVIDER_DEFAULTS.dig(slug, 'capabilities') || {}
+    # Static capability matrix for the supported providers. Kept here
+    # (not in a YAML) so the LlmProviderResolver has zero dependencies
+    # and can be called from background jobs without loading the
+    # LlmProviderSetting constant (which depends on Rails + the DB).
+    def capabilities_for(slug:)
+      {
+        'minimax'           => { text: true, images: true, audio_input: true, audio_output: true, video: true, tool_calling: true, embeddings: true },
+        'openai'            => { text: true, images: true, audio_input: true, audio_output: true, video: false, tool_calling: true, embeddings: true },
+        'openrouter'        => { text: true, images: true, audio_input: false, audio_output: false, video: false, tool_calling: true, embeddings: true },
+        'together'          => { text: true, images: true, audio_input: true, audio_output: false, video: false, tool_calling: true, embeddings: true },
+        'groq'              => { text: true, images: true, audio_input: true, audio_output: false, video: false, tool_calling: true, embeddings: false },
+        'anthropic'         => { text: true, images: true, audio_input: false, audio_output: false, video: false, tool_calling: true, embeddings: false },
+        'gemini'            => { text: true, images: true, audio_input: true, audio_output: true, video: true, tool_calling: true, embeddings: true },
+        'local'             => { text: true, images: false, audio_input: false, audio_output: false, video: false, tool_calling: true, embeddings: true },
+        'openai_compatible' => { text: true, images: false, audio_input: false, audio_output: false, video: false, tool_calling: true, embeddings: false }
+      }[slug] || { text: true }
+    end
+
+    def missing_config_payload
+      {
+        feature: @feature,
+        provider: nil,
+        api_key: nil,
+        api_base: nil,
+        model: nil,
+        source: :missing,
+        capabilities: {},
+        error: 'CAPTAIN_OPEN_AI_API_KEY / CAPTAIN_OPEN_AI_ENDPOINT / CAPTAIN_OPEN_AI_MODEL must be set'
+      }
     end
   end
 end

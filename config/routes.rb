@@ -270,22 +270,6 @@ Rails.application.routes.draw do
           # Useful when preDeployCommand didn't run on the latest deploy.
           post 'migrate/run', to: 'migrations#run'
 
-          # LLM provider registry — per-account OpenAI-compatible endpoints
-          # (MiniMax, OpenAI, OpenRouter, Together, Groq, Gemini, Anthropic,
-          # self-hosted vLLM/llama.cpp/Ollama). Operators add one or more
-          # providers, store the API key (encrypted at rest), and pick a
-          # default. Captain routes every request through the active
-          # provider's /chat/completions, /audio/transcriptions, etc.
-          resources :llm_providers, only: [:index, :show, :create, :update, :destroy] do
-            collection do
-              get :available
-            end
-            member do
-              post :set_default
-              post :validate
-            end
-          end
-
           resources :applied_slas, only: [:index] do
             collection do
               get :metrics

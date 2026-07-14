@@ -503,15 +503,6 @@ const menuItems = computed(() => {
             navigationPath: 'captain_assistants_settings_index',
           }),
         },
-        {
-          name: 'LLM Providers',
-          label: t('SIDEBAR.LLM_PROVIDERS', {
-            defaultValue: 'AI Providers',
-          }),
-          icon: 'i-lucide-cpu',
-          to: accountScopedRoute('llm_providers_index'),
-          activeOn: ['llm_providers_index'],
-        },
       ],
     },
     {
