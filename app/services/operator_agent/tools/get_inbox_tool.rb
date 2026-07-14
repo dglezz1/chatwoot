@@ -19,7 +19,8 @@ class OperatorAgent::Tools::GetInboxTool < OperatorAgent::Tools::BaseTool
     captain_inbox = inbox.captain_inbox
     captain_block = if captain_inbox
       assistant = Captain::Assistant.find_by(id: captain_inbox.captain_assistant_id)
-      "  - Assistant ##{captain_inbox.captain_assistant_id} (#{assistant&.name || 'unknown'}, mode=#{captain_inbox.auto_reply_mode})"
+      mode = captain_inbox.config&.dig('auto_reply_mode') || 'unknown'
+      "  - Assistant ##{captain_inbox.captain_assistant_id} (#{assistant&.name || 'unknown'}, mode=#{mode})"
     else
       '  (none)'
     end
