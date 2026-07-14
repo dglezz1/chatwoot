@@ -3,7 +3,7 @@ class OperatorAgent::Tools::GetInboxTool < OperatorAgent::Tools::BaseTool
   param :inbox_id, type: 'integer', desc: 'The ID of the inbox to fetch', required: true
 
   def perform(_tool_context, inbox_id:)
-    inbox = account_scoped(Inbox).includes(:channel, :account, :inbox_members, captain_assistants_inboxes: :captain_assistant).find_by(id: inbox_id)
+    inbox = account_scoped(Inbox).includes(:channel, :account, :inbox_members, :captain_inbox).find_by(id: inbox_id)
     return err("Inbox ##{inbox_id} not found in this account.") unless inbox
 
     channel = inbox.channel
@@ -16,10 +16,13 @@ class OperatorAgent::Tools::GetInboxTool < OperatorAgent::Tools::BaseTool
     end
     members_block = members.any? ? members.join("\n") : '  (none)'
 
-    captains = inbox.captain_assistants_inboxes.includes(:captain_assistant).map do |ca|
-      "  - Assistant ##{ca.captain_assistant_id} (#{ca.captain_assistant.name}, mode=#{ca.auto_reply_mode})"
+    captain_inbox = inbox.captain_inbox
+    captain_block = if captain_inbox
+      assistant = Captain::Assistant.find_by(id: captain_inbox.captain_assistant_id)
+      "  - Assistant ##{captain_inbox.captain_assistant_id} (#{assistant&.name || 'unknown'}, mode=#{captain_inbox.auto_reply_mode})"
+    else
+      '  (none)'
     end
-    captains_block = captains.any? ? captains.join("\n") : '  (none)'
 
     <<~TEXT
       Inbox ##{inbox.id}: #{inbox.name}
@@ -28,8 +31,8 @@ class OperatorAgent::Tools::GetInboxTool < OperatorAgent::Tools::BaseTool
       #{channel_attrs}
       Members (#{inbox.inbox_members.size}):
       #{members_block}
-      Captain assistants linked:
-      #{captains_block}
+      Captain assistant linked:
+      #{captain_block}
       Created: #{inbox.created_at}
     TEXT
   rescue StandardError => e
