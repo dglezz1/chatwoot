@@ -87,7 +87,6 @@ module OperatorAgent
       return [] unless agent_result.respond_to?(:context)
 
       history = agent_result.context&.dig(:conversation_history) || []
-      # Walk backwards to find the most recent assistant message with tool_calls
       history.reverse.each do |msg|
         tc = msg[:tool_calls] || msg['tool_calls']
         return Array(tc) if tc.present?
@@ -95,8 +94,19 @@ module OperatorAgent
       []
     end
 
+    # Pending actions are NOT in the tool_call object — they're encoded
+    # in the tool's RESULT string. The tool returns
+    # "PENDING_ACTION|{json}\n{summary}" and we parse the marker.
     def extract_pending_action(tool_calls)
-      tool_calls.find { |tc| tc.is_a?(Hash) && (tc[:pending_action] == true || tc['pending_action'] == true) }
+      tool_calls.each do |tc|
+        next unless tc.is_a?(Hash)
+        result = tc[:result] || tc['result']
+        next unless result.is_a?(String) && result.start_with?('PENDING_ACTION|')
+        payload = result.sub(/^PENDING_ACTION\|/, '').split("\n", 2).first.to_s
+        parsed = JSON.parse(payload) rescue nil
+        return parsed if parsed.is_a?(Hash)
+      end
+      nil
     end
 
     def build_agent
@@ -189,14 +199,16 @@ module OperatorAgent
         name = tc[:name] || tc['name']
         next unless name
 
+        result = (tc[:result] || tc['result']).to_s
+        is_pending = result.start_with?('PENDING_ACTION|')
         OperatorAgent::ActionLog.record!(
           account: @account,
           user: @user,
           thread: @thread,
           tool_name: name.to_s,
           tool_args: tc[:args] || tc['args'] || {},
-          tool_result: (tc[:result] || tc['result']).to_s,
-          status: tc[:pending_action] ? 'awaiting_confirmation' : 'success',
+          tool_result: result.truncate(1_000),
+          status: is_pending ? 'awaiting_confirmation' : (result.start_with?('ERROR:') ? 'error' : 'success'),
           duration_ms: nil
         )
       end

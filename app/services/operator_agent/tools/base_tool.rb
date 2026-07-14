@@ -63,20 +63,22 @@ class OperatorAgent::Tools::BaseTool < Agents::Tool
   end
 
   def ok(content, metadata: {})
-    { content: content, metadata: metadata }.with_indifferent_access
+    content.to_s
   end
 
+  # Returns a string with a special marker that the executor parses
+  # into a PendingAction row. The marker is on a single line at the
+  # start so the executor can split it cleanly:
+  #   PENDING_ACTION|<json_payload>
+  # The rest of the string (after the marker) is the human-readable
+  # summary the LLM will see and rephrase to the operator.
   def pending(tool_name, tool_args, summary)
-    {
-      pending_action: true,
-      tool_name: tool_name,
-      tool_args: tool_args,
-      summary: summary
-    }.with_indifferent_access
+    payload = JSON.dump(tool_name: tool_name.to_s, tool_args: tool_args.stringify_keys, summary: summary.to_s)
+    "PENDING_ACTION|#{payload}\n#{summary}"
   end
 
   def err(message)
-    { content: message, error: true }.with_indifferent_access
+    "ERROR: #{message}"
   end
 end
 
