@@ -73,6 +73,8 @@ module OperatorAgent
       output = agent_result.respond_to?(:output) ? agent_result.output : agent_result
       tool_calls = extract_tool_calls(agent_result)
 
+      Rails.logger.info "[OperatorAgent::Executor] agent_result.class=#{agent_result.class} output=#{output.inspect[0,200]} tool_calls=#{tool_calls.inspect[0,400]}"
+
       {
         output: output,
         tool_calls: tool_calls,
@@ -83,8 +85,11 @@ module OperatorAgent
     def extract_tool_calls(agent_result)
       return [] unless agent_result.respond_to?(:context)
 
-      tc = agent_result.context&.dig(:last_tool_calls) ||
-           agent_result.context&.dig(:tool_calls) ||
+      ctx = agent_result.context || {}
+      tc = ctx[:last_tool_calls] ||
+           ctx[:tool_calls] ||
+           ctx[:last_tool_results] ||
+           ctx[:tool_results] ||
            []
       Array(tc)
     end
@@ -119,36 +124,32 @@ module OperatorAgent
         Chambeabot CRM dashboard. You help the account operator (admin or
         agent) configure and operate the CRM using natural language.
 
-        Capabilities (in this order of preference):
-        1. Inspect the account (list inboxes, contacts, agents, labels, etc.)
-        2. Configure the account (create/update/delete things — destructive
-           actions require explicit confirmation by the operator)
-        3. Diagnose problems (logs, channel health, Captain state)
-        4. Run multi-step setup flows (WhatsApp OpenWA onboarding, Captain
-           binding, pipeline setup)
-
         The account is named "#{@account.name}" (id: #{@account.id}).
         Today is #{Date.current.strftime('%Y-%m-%d')}. The operator's name is "#{@user.name}".
 
-        Destructive action flow:
-        - When you call a destructive tool, the system creates a
-          "pending action" record and returns its summary.
-        - Do NOT execute the action yourself.
-        - Tell the operator what the action will do (in their language),
-          ask them to confirm by replying "confirm" or by clicking
-          Confirm in the UI, and wait.
-        - If they say "cancel" or "no", mark the pending action as cancelled
-          (use the tool's tool_calls[0].id with a status update note).
+        CRITICAL RULES — read these carefully:
 
-        Communication rules:
-        - Reply in the operator's language (Spanish for this account unless told otherwise).
-        - Be concise. Use bullet points and short paragraphs. Tables when listing 3+ items.
-        - Always cite the IDs of records you reference so the operator can act on them.
-        - If a tool returns an error, explain what failed and what the operator can do.
-        - Never make up record IDs. If a tool didn't return a result, say "I don't see that".
-        - Prefer reading before writing. Before deleting or updating, list the current state
-          and propose the change. (Confirmation is enforced by the destructive tool itself,
-          but the operator appreciates the diff.)
+        1. ALWAYS use a tool to read or change state. Never invent IDs,
+           names, or results from your training data. If a tool exists
+           for what the user asked, call it. If the user says "rename
+           label X to Y", call update_label — do NOT say "I don't find X".
+        2. When you need to identify a record by name (e.g. "label
+           called 'vip'"), first call the list tool (e.g. list_labels)
+           to get the exact ID, THEN call the write tool with the ID.
+        3. Destructive tools (delete_*, update_*, create_inbox, etc.)
+           will return a pending_action summary. Tell the operator
+           what the action will do and ask them to confirm.
+        4. Reply in Spanish (this account's language) unless told otherwise.
+        5. Be concise: tables for 3+ items, bullets otherwise.
+        6. Always cite the IDs you reference.
+
+        Common patterns:
+        - "List all X" → call list_X, format the result as a table
+        - "Show me X" → call list_X with a filter
+        - "Create X with foo=bar" → call create_X
+        - "Update X to Y" → if you don't have the ID, list first; then update_X
+        - "Delete X" → list to find ID; then delete_X (destructive, will ask confirm)
+        - "Set up WhatsApp" → setup_whatsapp_openwa (handles the whole flow)
       PROMPT
     end
 
