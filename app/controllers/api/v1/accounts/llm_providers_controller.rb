@@ -12,9 +12,9 @@ class Api::V1::Accounts::LlmProvidersController < Api::V1::Accounts::BaseControl
   # Returns the list of provider presets (label, default api_base, etc.)
   # that the UI uses to render the "Add new provider" form.
   def available
-    render json: LlmProviderSetting::PROVIDERS.map do |slug|
+    presets = LlmProviderSetting::PROVIDERS.map do |slug|
       defaults = LlmProviderSetting::PROVIDER_DEFAULTS[slug] || {}
-      {
+      result = {
         slug: slug,
         label: defaults['label'] || slug.split('_').map(&:capitalize).join(' '),
         api_base: defaults['api_base'],
@@ -24,7 +24,9 @@ class Api::V1::Accounts::LlmProvidersController < Api::V1::Accounts::BaseControl
         default_embedding_model: defaults['embedding_model'],
         capabilities: defaults['capabilities'] || {}
       }
+      result
     end
+    render json: presets
   end
 
   # POST /api/v1/accounts/:account_id/llm_providers
