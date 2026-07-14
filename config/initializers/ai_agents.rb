@@ -3,9 +3,17 @@
 require 'agents'
 
 Rails.application.config.after_initialize do
-  api_key = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
-  model = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
-  api_endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value || LlmConstants::OPENAI_API_ENDPOINT
+  # Read from ENV first (Railway project vault), fall back to
+  # InstallationConfig for self-hosted deployments that still use the DB.
+  # ENV wins so the same code can run in both modes without coordination.
+  api_key = ENV['CAPTAIN_OPEN_AI_API_KEY'].presence ||
+            InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
+  model = ENV['CAPTAIN_OPEN_AI_MODEL'].presence ||
+          InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence ||
+          LlmConstants::DEFAULT_MODEL
+  api_endpoint = ENV['CAPTAIN_OPEN_AI_ENDPOINT'].presence ||
+                 InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value ||
+                 LlmConstants::OPENAI_API_ENDPOINT
 
   if api_key.present?
     Agents.configure do |config|
@@ -40,8 +48,10 @@ Rails.application.config.after_initialize do
       original_init = chat_class.instance_method(:initialize)
       chat_class.class_eval do
         define_method(:initialize) do |model: nil, provider: nil, context: nil, **kwargs|
-          installed_model = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
-          installed_endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
+          installed_model = ENV['CAPTAIN_OPEN_AI_MODEL'].presence ||
+                            InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value
+          installed_endpoint = ENV['CAPTAIN_OPEN_AI_ENDPOINT'].presence ||
+                               InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
 
           if installed_endpoint.present? && model.to_s == installed_model.to_s
             provider ||= 'openai'
@@ -69,7 +79,8 @@ Rails.application.config.after_initialize do
       original_with_schema = chat_class.instance_method(:with_schema)
       chat_class.class_eval do
         define_method(:with_schema) do |schema, **kwargs|
-          installed_endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
+          installed_endpoint = ENV['CAPTAIN_OPEN_AI_ENDPOINT'].presence ||
+                               InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
           # MiniMax's chat completions only support 'json_schema' or 'text' — not
           # the stricter 'response_format' that ai-agents' schema wrapper would
           # generate. We strip the schema entirely for MiniMax and rely on the
@@ -96,7 +107,8 @@ Rails.application.config.after_initialize do
       original_with_params = chat_class.instance_method(:with_params)
       chat_class.class_eval do
         define_method(:with_params) do |**params|
-          installed_endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
+          installed_endpoint = ENV['CAPTAIN_OPEN_AI_ENDPOINT'].presence ||
+                               InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value
           rf = params[:response_format]
           if installed_endpoint.present? && rf.is_a?(Hash) && rf[:type] == 'json_object'
             Rails.logger.debug "[ai_agents] dropping response_format=json_object for custom endpoint"
