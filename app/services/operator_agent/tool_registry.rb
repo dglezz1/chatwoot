@@ -1,28 +1,42 @@
 module OperatorAgent
   # Registry of available tools for the Operator Agent.
   #
-  # Phase 1: 5 read-only tools are always available.
-  # Phase 2+: registry grows with write tools (some require confirmation).
-  # Phase 3+: setup-flow tools added (WhatsApp OpenWA, Captain binding, etc.)
-  #
-  # Tools are simple Ruby classes extending OperatorAgent::Tools::BaseTool.
-  # The registry instantiates them with the right account+user and passes
-  # them to the agents gem.
+  # Tools are auto-discovered from app/services/operator_agent/tools/.
+  # Any class that subclasses OperatorAgent::Tools::BaseTool is
+  # automatically registered — no need to maintain a TOOL_CLASSES
+  # array. This prevents the "added a new tool but forgot to
+  # register it" class of bug and removes the need for multiple
+  # coders to coordinate edits to a shared file.
   class ToolRegistry
-    TOOL_CLASSES = [
-      OperatorAgent::Tools::ListInboxesTool,
-      OperatorAgent::Tools::GetInboxTool,
-      OperatorAgent::Tools::ListContactsTool,
-      OperatorAgent::Tools::ListAgentsTool,
-      OperatorAgent::Tools::ListLabelsTool
-    ].freeze
+    TOOLS_DIR = Rails.root.join('app/services/operator_agent/tools')
+
+    # Returns tool class names (strings) so the LLM can reference
+    # them safely without triggering autoload at class-load time.
+    def self.tool_class_names
+      Dir[TOOLS_DIR.join('*_tool.rb')].map do |path|
+        # Convert "list_inboxes_tool.rb" → "OperatorAgent::Tools::ListInboxesTool"
+        base = File.basename(path, '.rb')
+        # Camelize each underscore segment, preserving the :: scoping
+        parts = base.split('_').map { |seg| seg[0].upcase + seg[1..] }
+        klass_name = parts.join
+        "OperatorAgent::Tools::#{klass_name}"
+      end.uniq
+    end
 
     def self.tools_for(account:, user:)
-      TOOL_CLASSES.map { |klass| klass.new(account: account, user: user) }
+      tool_class_names.filter_map do |name|
+        klass = name.safe_constantize
+        next unless klass
+        next if klass == OperatorAgent::Tools::BaseTool # skip the base class itself
+        klass.new(account: account, user: user)
+      end
     end
 
     def self.capabilities
-      TOOL_CLASSES.map do |klass|
+      tool_class_names.filter_map do |name|
+        klass = name.safe_constantize
+        next unless klass
+        next if klass == OperatorAgent::Tools::BaseTool
         instance = klass.allocate
         {
           name: instance.name,
@@ -34,8 +48,8 @@ module OperatorAgent
     end
 
     def self.find_tool_class(name)
-      normalized = name.to_s.gsub(/(?:^|_)([a-z])/) { Regexp.last_match(1).upcase }
-      "OperatorAgent::Tools::#{normalized}Tool".safe_constantize
+      return name if name.is_a?(Class)
+      name.to_s.safe_constantize
     end
   end
 end

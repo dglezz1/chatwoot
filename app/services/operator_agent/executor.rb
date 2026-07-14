@@ -2,14 +2,15 @@ module OperatorAgent
   # Runs a single message through the LLM with tool calling.
   #
   # Pipeline:
-  # 1. Persist the user message
-  # 2. Load previous messages from the thread (chronological)
-  # 3. Build an Agents::Agent with the registered tool set
-  # 4. Run the LLM (RubyLLM.chat under the hood)
-  # 5. Persist the assistant response + any tool call records
-  # 6. If the response is a pending_action, also persist a
-  #    OperatorAgent::PendingAction row and stop (no further LLM call)
-  # 7. Audit every tool call
+  # 1. The user message is already persisted by the controller.
+  # 2. Load previous messages from the thread (chronological).
+  # 3. Build an Agents::Agent with the registered tool set.
+  # 4. Run the LLM (RubyLLM.chat under the hood) with max 6 turns.
+  # 5. If the final response is a pending_action, persist a
+  #    OperatorAgent::PendingAction row and tell the LLM to
+  #    ask the operator to confirm. No more LLM calls this turn.
+  # 6. If the response is normal text, persist it as the assistant
+  #    message and audit every tool call.
   #
   # The LLM provider is whatever is configured via the env-only
   # Llm::AccountProviderResolver / Agents.configure — i.e. whatever
@@ -17,41 +18,34 @@ module OperatorAgent
   class Executor
     MAX_TURNS = 6
 
-    def initialize(thread:, user_message:)
+    def initialize(thread:, user_message:, confirmed_action_id: nil)
       @thread = thread
       @account = thread.account
       @user = thread.user
       @user_message = user_message
+      @confirmed_action_id = confirmed_action_id
     end
 
     def perform
-      user_msg = persist_user_message
       history = load_message_history
 
       result = run_with_tools(history)
+      tool_calls = result[:tool_calls] || []
 
-      assistant_msg = persist_assistant_response(result)
+      assistant_msg = persist_assistant_response(result, tool_calls)
       handle_pending_actions(result, assistant_msg) if result[:pending_action].present?
 
+      audit_tool_calls(tool_calls)
       assistant_msg
     rescue StandardError => e
       ChatwootExceptionTracker.new(e, account: @account).capture_exception
       Rails.logger.error "[OperatorAgent::Executor] error: #{e.message}"
       Rails.logger.error e.backtrace.first(10).join("\n")
 
-      fail_user_message(user_msg) if user_msg&.persisted?
       raise
     end
 
     private
-
-    def persist_user_message
-      @thread.messages.create!(
-        role: 'user',
-        content: @user_message.to_s,
-        status: 'complete'
-      )
-    end
 
     def load_message_history
       @thread.messages.ordered.map(&:as_llm_message)
@@ -64,6 +58,8 @@ module OperatorAgent
         user_id: @user.id,
         thread_id: @thread.id
       }
+      context[:confirmed_action_id] = @confirmed_action_id if @confirmed_action_id.present?
+
       result = Agents::Runner.with_agents(agent).run(
         history.last[:content].to_s,
         context: context,
@@ -87,15 +83,14 @@ module OperatorAgent
     def extract_tool_calls(agent_result)
       return [] unless agent_result.respond_to?(:context)
 
-      tool_calls = agent_result.context&.dig(:last_tool_calls) ||
-                   agent_result.context&.dig(:tool_calls) ||
-                   []
-      Array(tool_calls)
+      tc = agent_result.context&.dig(:last_tool_calls) ||
+           agent_result.context&.dig(:tool_calls) ||
+           []
+      Array(tc)
     end
 
     def extract_pending_action(tool_calls)
-      pending = tool_calls.find { |tc| tc.is_a?(Hash) && tc[:pending_action] == true }
-      pending
+      tool_calls.find { |tc| tc.is_a?(Hash) && (tc[:pending_action] == true || tc['pending_action'] == true) }
     end
 
     def build_agent
@@ -113,10 +108,6 @@ module OperatorAgent
     end
 
     def chat_model
-      # The model is whatever the env resolver picks up. The agents
-      # gem will use RubyLLM.chat which routes to MiniMax / OpenAI /
-      # whatever the env says. We don't pin it here so swapping
-      # providers in Railway env requires zero code changes.
       InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence ||
         ENV['CAPTAIN_OPEN_AI_MODEL'].presence ||
         'MiniMax-M3'
@@ -130,28 +121,40 @@ module OperatorAgent
 
         Capabilities (in this order of preference):
         1. Inspect the account (list inboxes, contacts, agents, labels, etc.)
-        2. Configure the account (Phase 2: create/update/delete things — pending confirmation)
+        2. Configure the account (create/update/delete things — destructive
+           actions require explicit confirmation by the operator)
         3. Diagnose problems (logs, channel health, Captain state)
-        4. Run multi-step setup flows (Phase 3: WhatsApp OpenWA onboarding, Captain binding, pipeline setup)
+        4. Run multi-step setup flows (WhatsApp OpenWA onboarding, Captain
+           binding, pipeline setup)
 
         The account is named "#{@account.name}" (id: #{@account.id}).
         Today is #{Date.current.strftime('%Y-%m-%d')}. The operator's name is "#{@user.name}".
+
+        Destructive action flow:
+        - When you call a destructive tool, the system creates a
+          "pending action" record and returns its summary.
+        - Do NOT execute the action yourself.
+        - Tell the operator what the action will do (in their language),
+          ask them to confirm by replying "confirm" or by clicking
+          Confirm in the UI, and wait.
+        - If they say "cancel" or "no", mark the pending action as cancelled
+          (use the tool's tool_calls[0].id with a status update note).
 
         Communication rules:
         - Reply in the operator's language (Spanish for this account unless told otherwise).
         - Be concise. Use bullet points and short paragraphs. Tables when listing 3+ items.
         - Always cite the IDs of records you reference so the operator can act on them.
         - If a tool returns an error, explain what failed and what the operator can do.
-        - If you need more information, ask ONE clarifying question. Don't ask 5 at once.
         - Never make up record IDs. If a tool didn't return a result, say "I don't see that".
-        - Never suggest destructive actions (delete, update) without first listing the current state
-          and asking the operator to confirm. (Phase 2: pending actions enforce this automatically.)
+        - Prefer reading before writing. Before deleting or updating, list the current state
+          and propose the change. (Confirmation is enforced by the destructive tool itself,
+          but the operator appreciates the diff.)
       PROMPT
     end
 
-    def persist_assistant_response(result)
+    def persist_assistant_response(result, tool_calls)
       content = result[:output].is_a?(Hash) ? result[:output][:content].to_s : result[:output].to_s
-      tool_calls = result[:tool_calls].map do |tc|
+      tcs = tool_calls.map do |tc|
         {
           name: tc[:name] || tc['name'],
           args: tc[:args] || tc['args'],
@@ -163,7 +166,7 @@ module OperatorAgent
       @thread.messages.create!(
         role: 'assistant',
         content: content.presence || '(no response)',
-        tool_calls: tool_calls,
+        tool_calls: tcs,
         status: 'complete'
       )
     end
@@ -178,8 +181,23 @@ module OperatorAgent
       )
     end
 
-    def fail_user_message(user_msg)
-      user_msg&.update(status: 'failed', error: 'Executor failed; see logs')
+    def audit_tool_calls(tool_calls)
+      tool_calls.each do |tc|
+        next unless tc.is_a?(Hash)
+        name = tc[:name] || tc['name']
+        next unless name
+
+        OperatorAgent::ActionLog.record!(
+          account: @account,
+          user: @user,
+          thread: @thread,
+          tool_name: name.to_s,
+          tool_args: tc[:args] || tc['args'] || {},
+          tool_result: (tc[:result] || tc['result']).to_s,
+          status: tc[:pending_action] ? 'awaiting_confirmation' : 'success',
+          duration_ms: nil
+        )
+      end
     end
   end
 end

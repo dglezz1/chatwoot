@@ -133,6 +133,10 @@ Rails.application.routes.draw do
           namespace :operator_agent do
             resources :threads, only: [:index, :create, :show, :destroy] do
               resources :messages, only: [:index, :create]
+              resources :pending_actions, only: [] do
+                post :confirm, on: :member
+                post :cancel, on: :member
+              end
             end
             get :capabilities, to: 'capabilities#index'
           end
