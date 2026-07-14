@@ -42,10 +42,11 @@ class Api::V1::Accounts::OperatorAgent::ThreadsController < Api::V1::Accounts::B
 
   def thread_payload
     messages = @thread.messages.ordered.to_a
-    pending = OperatorAgent::PendingAction.joins(:message)
-                                         .where(messages: { thread_id: @thread.id })
-                                         .where(status: 'awaiting_confirmation')
-                                         .to_a
+    pending = OperatorAgent::PendingAction
+              .joins('INNER JOIN operator_agent_messages ON operator_agent_messages.id = operator_agent_pending_actions.message_id')
+              .where(operator_agent_messages: { thread_id: @thread.id })
+              .where(status: 'awaiting_confirmation')
+              .to_a
     {
       id: @thread.id,
       title: @thread.title,

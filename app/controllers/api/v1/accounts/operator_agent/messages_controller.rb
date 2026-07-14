@@ -3,9 +3,10 @@ class Api::V1::Accounts::OperatorAgent::MessagesController < Api::V1::Accounts::
 
   def index
     messages = @thread.messages.ordered
-    pending = OperatorAgent::PendingAction.joins(:message)
-                                         .where(messages: { thread_id: @thread.id })
-                                         .where(status: 'awaiting_confirmation')
+    pending = OperatorAgent::PendingAction
+              .joins('INNER JOIN operator_agent_messages ON operator_agent_messages.id = operator_agent_pending_actions.message_id')
+              .where(operator_agent_messages: { thread_id: @thread.id })
+              .where(status: 'awaiting_confirmation')
     render json: {
       messages: messages.map do |m|
         {
