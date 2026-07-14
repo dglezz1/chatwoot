@@ -17,8 +17,8 @@ const formDialogRef = ref(null);
 
 // Open the native <dialog> when the v-if condition flips to true.
 // The ProviderFormDialog auto-mounts on isDialogOpen=true (v-if),
-# so we wait one tick for the template ref to be bound, then call
-# .open() on its inner dialogRef (which calls showModal()).
+// so we wait one tick for the template ref to be bound, then call
+// .open() on its inner dialogRef (which calls showModal()).
 watch(isDialogOpen, async open => {
   if (!open) return;
   await nextTick();
