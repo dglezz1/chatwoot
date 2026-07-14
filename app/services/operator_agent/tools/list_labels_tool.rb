@@ -5,19 +5,21 @@ class OperatorAgent::Tools::ListLabelsTool < OperatorAgent::Tools::BaseTool
   def perform(_tool_context, limit: 100)
     limit = limit.to_i.clamp(1, 500)
 
-    labels = account_scoped(Label)
-             .left_joins("LEFT JOIN taggings ON taggings.tag_id = labels.id AND taggings.taggable_type = 'Conversation'")
-             .group('labels.id')
-             .select('labels.*, COUNT(taggings.id) AS conversations_count')
-             .order('conversations_count DESC, labels.title ASC')
-             .limit(limit)
+    labels = account_scoped(Label).order(:title).limit(limit).to_a
 
     if labels.empty?
       return ok('No hay labels definidos en esta cuenta aún.')
     end
 
+    # Count taggings per label (in a separate query to avoid join issues)
+    label_ids = labels.map(&:id)
+    counts = ActsAsTaggableOn::Tagging
+             .where(tag_id: label_ids, taggable_type: 'Conversation')
+             .group(:tag_id)
+             .count
+
     lines = labels.map do |label|
-      count = label.respond_to?(:conversations_count) ? label.conversations_count.to_i : 0
+      count = counts[label.id] || 0
       color = label.color.presence ? " (#{label.color})" : ''
       "##{label.id} | #{label.title}#{color} | #{count} conversación(es)"
     end
