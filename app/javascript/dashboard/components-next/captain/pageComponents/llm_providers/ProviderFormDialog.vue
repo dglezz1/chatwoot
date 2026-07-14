@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import LlmProvidersAPI from 'dashboard/api/llmProviders';
@@ -7,7 +7,6 @@ import LlmProvidersAPI from 'dashboard/api/llmProviders';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
-import TextArea from 'next/textarea/TextArea.vue';
 
 const props = defineProps({
   provider: { type: Object, default: null },
@@ -17,6 +16,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved']);
 const { t } = useI18n();
 
+const dialogRef = ref(null);
 const form = ref({
   provider: 'minimax',
   label: '',
@@ -51,22 +51,31 @@ const applyPreset = slug => {
 
 onMounted(async () => {
   if (isEditing.value) {
-    const { data } = await LlmProvidersAPI.show(props.provider.id);
-    form.value = {
-      provider: data.provider,
-      label: data.label || '',
-      api_base: data.api_base || '',
-      api_key: data.api_key || '',
-      chat_model: data.chat_model || '',
-      vision_model: data.vision_model || '',
-      audio_transcription_model: data.audio_transcription_model || '',
-      embedding_model: data.embedding_model || '',
-      enabled: data.enabled,
-      is_default: data.is_default,
-    };
+    try {
+      const { data } = await LlmProvidersAPI.show(props.provider.id);
+      form.value = {
+        provider: data.provider,
+        label: data.label || '',
+        api_base: data.api_base || '',
+        api_key: data.api_key || '',
+        chat_model: data.chat_model || '',
+        vision_model: data.vision_model || '',
+        audio_transcription_model: data.audio_transcription_model || '',
+        embedding_model: data.embedding_model || '',
+        enabled: data.enabled,
+        is_default: data.is_default,
+      };
+    } catch (err) {
+      // silent
+    }
   } else {
     applyPreset('minimax');
   }
+  // Auto-open the dialog once mounted. The parent renders this component
+  // via v-if so by the time onMounted runs, dialogRef is in scope.
+  nextTick(() => {
+    dialogRef.value?.open?.();
+  });
 });
 
 const onProviderChange = () => applyPreset(form.value.provider);
@@ -98,6 +107,7 @@ const save = async () => {
 
 <template>
   <Dialog
+    ref="dialogRef"
     type="modal"
     :title="isEditing ? $t('LLM_PROVIDERS.EDIT_TITLE', { defaultValue: 'Editar proveedor' }) : $t('LLM_PROVIDERS.ADD_TITLE', { defaultValue: 'Agregar proveedor de IA' })"
     :show-cancel-button="false"
