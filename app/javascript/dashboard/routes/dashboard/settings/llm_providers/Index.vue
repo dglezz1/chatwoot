@@ -15,6 +15,12 @@ const { t } = useI18n();
 const store = useStore();
 const formDialogRef = ref(null);
 
+const providers = ref([]);
+const available = ref([]);
+const isLoading = ref(false);
+const isDialogOpen = ref(false);
+const editingProvider = ref(null);
+
 // Open the native <dialog> when the v-if condition flips to true.
 // The ProviderFormDialog auto-mounts on isDialogOpen=true (v-if),
 // so we wait one tick for the template ref to be bound, then call
@@ -24,12 +30,6 @@ watch(isDialogOpen, async open => {
   await nextTick();
   formDialogRef.value?.open?.();
 });
-
-const providers = ref([]);
-const available = ref([]);
-const isLoading = ref(false);
-const isDialogOpen = ref(false);
-const editingProvider = ref(null);
 
 const loadProviders = async () => {
   isLoading.value = true;
