@@ -10,8 +10,8 @@ class OperatorAgent::Tools::GetInboxTool < OperatorAgent::Tools::BaseTool
     channel_class = channel&.class&.name&.delete_prefix('Channel::') || 'Unknown'
     channel_attrs = channel ? channel.attributes.except('id', 'account_id', 'created_at', 'updated_at').map { |k, v| "  #{k}: #{v}" }.join("\n") : '  (no channel)'
 
-    members = inbox.inbox_members.includes(:user, :team).map do |m|
-      label = m.user ? "@#{m.user.name} (user ##{m.user.id})" : "team ##{m.team_id}"
+    members = inbox.inbox_members.includes(:user).map do |m|
+      label = m.user ? "@#{m.user.name} (user ##{m.user.id})" : "(user id #{m.user_id})"
       "  - #{label}"
     end
     members_block = members.any? ? members.join("\n") : '  (none)'
