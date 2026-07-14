@@ -41,7 +41,14 @@ class Api::V1::Accounts::OperatorAgent::MessagesController < Api::V1::Accounts::
     )
     @message.enqueue_response_job
 
-    render json: message_response_payload, status: :accepted
+    # In async mode, no pending_actions exist yet (the LLM hasn't run).
+    # Return the user message + status so the client can poll for the
+    # assistant response.
+    render json: {
+      message: serialize_message(@message),
+      pending_actions: [],
+      status: 'queued'
+    }, status: :accepted
   rescue StandardError => e
     Rails.logger.error "[OperatorAgent::MessagesController#create] #{e.class.name}: #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")
