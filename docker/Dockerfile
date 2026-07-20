@@ -154,3 +154,14 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 WORKDIR /app
 
 EXPOSE 3000
+
+# Railway's DOCKERFILE builder does NOT auto-detect a Procfile the way
+# RAILPACK does. Without an explicit CMD/ENTRYPOINT the container starts
+# with no main process and immediately drops into "Switch to inspect mode",
+# which manifests to the public domain as ERR_TOO_MANY_REDIRECTS (Railway
+# edge keeps 301-ing to itself because the origin returns no response).
+#
+# This CMD mirrors the Procfile's `web:` line so the same image works on
+# both builders and locally under `docker run`.
+ENV RAILS_ENV=production
+CMD ["bundle", "exec", "rails", "server", "-p", "3000", "-b", "0.0.0.0"]
