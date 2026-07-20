@@ -219,7 +219,7 @@ async function fetchOpenwaStatus() {
   if (!currentInbox.value?.id) return;
   try {
     const { data } = await axios.get(
-      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.id}`
+      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.channel_id}`
     );
     openwaStatus.value = data;
   } catch (err) {
@@ -232,7 +232,7 @@ async function fetchOpenwaQr() {
   openwaError.value = null;
   try {
     const { data } = await axios.get(
-      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.id}/qr`
+      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.channel_id}/qr`
     );
     if (data.qrCode) {
       openwaQrCode.value = data.qrCode;
@@ -267,7 +267,7 @@ async function openwaStart() {
   openwaError.value = null;
   try {
     const { data } = await axios.post(
-      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.id}/start`
+      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.channel_id}/start`
     );
     if (data?.qrCode) {
       openwaQrCode.value = data.qrCode;
@@ -287,7 +287,7 @@ async function openwaStop() {
   openwaWorking.value = true;
   try {
     await axios.post(
-      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.id}/stop`
+      `/api/v2/whatsapp/openwa/channels/${currentInbox.value.channel_id}/stop`
     );
     openwaQrCode.value = null;
     openwaStatus.value = { status: 'stopped' };
