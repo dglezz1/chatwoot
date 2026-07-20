@@ -133,7 +133,20 @@ class Whatsapp::Openwa::PayloadAdapter
       type: 'text',
       text: { body: body }
     }
-    { messages: [msg], message_echoes: [msg] }
+
+    # Chambeabot: IncomingMessageService#set_contact dispatches on
+    # `outgoing_echo`. With outgoing_echo: false (the multi-device
+    # path), it calls set_contact_from_message which requires a
+    # `:contacts` array to identify the contact. Mirror the shape
+    # adapt_received_message uses so the message.sent (multi-device)
+    # path creates the contact + contact_inbox + message the same
+    # way a message.received does.
+    contact_attrs = {
+      profile: { name: (@data['pushName'] || @data[:pushName] || @data.dig('_data', 'notifyName')).to_s },
+      wa_id: phone
+    }
+
+    { messages: [msg], message_echoes: [msg], contacts: [contact_attrs] }
   end
 
   # Read receipts / message revocation.
