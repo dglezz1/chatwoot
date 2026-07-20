@@ -91,6 +91,19 @@ class Webhooks::OpenwaController < ActionController::API
       provider: 'openwa',
       provider_config: { session_id: session_id }
     )
+  rescue StandardError
+    # Chambeabot: the JSONB containment match (`provider_config @> '{"session_id":"..."}'`)
+    # silently returns nil when the JSONB column got re-serialized in a way that breaks
+    # the @> operator (we saw this happen after PATCH /inboxes/11 to swap session_id — the
+    # query would return 404 even though the row clearly has the matching session_id in its
+    # JSON. The Rails adapter doesn't raise, it just returns nil, which is impossible to tell
+    # apart from "no such channel" at the controller level). Fall back to a Ruby-side filter
+    # so a re-link always finds the channel even when the @> operator is unreliable.
+    fallback = Channel::Whatsapp.where(provider: 'openwa').to_a.find do |c|
+      c.provider_config.is_a?(Hash) && c.provider_config['session_id'] == session_id
+    end
+    Rails.logger.warn "[OPENWA] find_channel JSONB query returned nil; fell back to Ruby scan for session=#{session_id} result=#{fallback&.id}" if fallback
+    fallback
   end
 
   def valid_signature?(raw_body, channel)
