@@ -153,6 +153,13 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
 
+# Chambeabot: ActiveStorage local disk needs these writable dirs.
+# The .dockerignore excludes `storage/`, so we recreate it inside the
+# image. Without these mkdir calls, the first contact photo or message
+# attachment upload 500s with Errno::ENOENT.
+RUN mkdir -p /app/storage /app/log /app/tmp/pids /app/tmp/cache /app/tmp/sockets \
+    && chown -R 1000:1000 /app/storage /app/log /app/tmp 2>/dev/null || true
+
 EXPOSE 3000
 
 # Railway's DOCKERFILE builder does NOT auto-detect a Procfile the way

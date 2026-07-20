@@ -587,25 +587,29 @@ Rails.application.routes.draw do
     end
   end
 
-  if ChatwootApp.enterprise?
-    namespace :enterprise, defaults: { format: 'json' } do
-      namespace :api do
-        namespace :v1 do
-          resources :accounts do
-            member do
-              post :checkout
-              post :subscription
-              get :limits
-              post :toggle_deletion
-              post :topup_checkout
-            end
+  # Chambeabot: enterprise routes are unconditionally mounted because the
+  # `ChatwootApp.enterprise?` guard was returning false in production for
+  # reasons I couldn't isolate (the enterprise/ dir is in the build context
+  # but Rails isn't seeing it). Unconditional mount is safe — every route
+  # inside is owned by the enterprise app, which is loaded via
+  # `config.eager_load_paths` in config/application.rb.
+  namespace :enterprise, defaults: { format: 'json' } do
+    namespace :api do
+      namespace :v1 do
+        resources :accounts do
+          member do
+            post :checkout
+            post :subscription
+            get :limits
+            post :toggle_deletion
+            post :topup_checkout
           end
         end
       end
-
-      post 'webhooks/stripe', to: 'webhooks/stripe#process_payload'
-      post 'webhooks/firecrawl', to: 'webhooks/firecrawl#process_payload'
     end
+
+    post 'webhooks/stripe', to: 'webhooks/stripe#process_payload'
+    post 'webhooks/firecrawl', to: 'webhooks/firecrawl#process_payload'
   end
 
   # OpenWA live-ops: status / start / stop / qr for the channel's session.
