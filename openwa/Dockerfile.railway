@@ -2,28 +2,38 @@
 #
 # Railway provides the entire chatwoot repo as build context. We copy
 # what we need from /openwa/ subdir into /app inside the image.
+#
+# Chambeabot: this is a deliberate fork of the upstream openwa/Dockerfile.
+# The local/docker-compose build downloads Chrome for Testing (pinned to the
+# exact Chromium revision that puppeteer-core ships — 146.0.7680.31 per
+# node_modules/puppeteer-core/lib/cjs/puppeteer/revisions.js) and uses it as
+# the wwebjs engine. The previous Railway variant installed Debian's
+# `chromium` package from apt instead. Debian Bookworm's chromium is ~v132
+# (10+ major versions behind), and wwebjs 1.34.7 + WA Web modern builds
+# silently misbehave against it: the page loads a legacy WA Web bundle,
+# evaluate() throws minified `r: r` errors, and incoming `message.received`
+# events stop firing once the page state goes bad. Local worked, Railway
+# didn't, even though both ran the same source. Pinning Chrome for Testing
+# closes the gap.
 
 FROM node:22-slim
 
 ENV APP_DIR=/app \
-    WA_EXECUTABLE_PATH=/usr/bin/google-chrome \
     WA_USE_CHROME=true \
     WA_DISABLE_SPINS=true \
     WA_POPUP=true
 
+# Install Chromium's runtime libraries (NOT the browser itself — we use
+# Chrome for Testing). `chromium` and `chromium-driver` are intentionally
+# absent here; we want a clean separation so a stale apt cache can't sneak
+# an old binary in under /usr/bin/chromium.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      chromium fonts-liberation libnss3 libatk1.0-0 libatk-bridge2.0-0 \
+      fonts-liberation libnss3 libatk1.0-0 libatk-bridge2.0-0 \
       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-      libgbm1 libpango-1.0-0 libcairo2 libasound2 dumb-init ca-certificates gosu \
+      libgbm1 libpango-1.0-0 libcairo2 libasound2 libgtk-3-0 libx11-xcb1 \
+      libxshmfence1 dumb-init ca-certificates gosu curl procps \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
-    # OpenWA's WA_EXECUTABLE_PATH defaults to /usr/bin/google-chrome (Puppeteer's
-    # managed Chrome download location). On Railway we want a much smaller image,
-    # so point it at the OS chromium and create a backwards-compatible symlink
-    # for any tooling that still looks up "google-chrome".
-    && ln -sf /usr/bin/chromium /usr/bin/google-chrome \
-    && ln -sf /usr/bin/chromium /usr/bin/chromium-browser \
-    && chromium --version 2>&1 | head -1
+    && apt-get clean
 
 # Create the non-root 'openwa' user that the official entrypoint expects.
 RUN useradd --create-home --uid 1001 openwa
@@ -31,11 +41,10 @@ RUN useradd --create-home --uid 1001 openwa
 WORKDIR $APP_DIR
 
 # Copy full openwa/ source first. Then install deps and build.
-# .dockerignore excludes dashboard/, test/, node_modules — those get installed via npm ci.
+# .dockerignore excludes dashboard/, test/, node_modules — those get installed via npm install.
 COPY openwa/ ./
 
 # Install ALL deps (including dev: @nestjs/cli, typescript) needed for build.
-# NODE_ENV not yet production, so dev deps install correctly.
 # Use `npm install` (not `npm ci`) — the openwa/package-lock.json has drifted
 # out of sync with package.json (missing optional native packages like sharp's
 # per-platform binaries), and `npm ci` aborts hard on that. We intentionally
@@ -51,12 +60,33 @@ RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engi
 ENV NODE_ENV=production
 RUN npm prune --omit=dev
 
-ENV API_KEY=dev-admin-key \
-    PORT=2785 \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    # Puppeteer probes "userDataDir" parent for permissions; align it with the
-    # openwa user's home so it doesn't blow up at startup.
+# Download Chrome for Testing pinned to the version puppeteer-core expects.
+# This is the same step the local/docker-compose Dockerfile uses, which is
+# what makes local work. PUPPETEER_CACHE_DIR goes under /home/openwa so the
+# openwa user can read it without an extra chown dance; Puppeteer's
+# `browsers install` creates the chrome-* subdir under that path.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
+    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/puppeteer-chrome \
     PUPPETEER_CACHE_DIR=/home/openwa/.cache/puppeteer
+
+# Install Chrome for Testing matching puppeteer-core's pinned revision.
+# Hard-code the version string to the same one revisions.js ships (146.0.7680.31)
+# so the symlink + final PUPPETEER_EXECUTABLE_PATH are deterministic across
+# rebuilds. Puppeteer's `browsers install chrome@<rev>` also writes the
+# CHROME_PATH into the cache dir; we resolve the actual binary via find so
+# the version subdir layout doesn't matter.
+RUN mkdir -p ${PUPPETEER_CACHE_DIR} \
+    && ./node_modules/.bin/puppeteer browsers install chrome@146.0.7680.31 \
+    && CHROME_PATH="$(find ${PUPPETEER_CACHE_DIR}/chrome -name chrome -type f | head -n 1)" \
+    && test -n "$CHROME_PATH" \
+    && ln -s "$CHROME_PATH" /usr/local/bin/puppeteer-chrome \
+    && /usr/local/bin/puppeteer-chrome --version \
+    && chown -R openwa:openwa /home/openwa/.cache
+
+# XDG dirs on tmpfs so Chromium's config/cache writes don't hit a read-only
+# rootfs. Mirrors the local docker-compose setup (which uses read_only: true).
+ENV XDG_CONFIG_HOME=/tmp/.config \
+    XDG_CACHE_HOME=/tmp/.cache
 
 EXPOSE 2785
 
