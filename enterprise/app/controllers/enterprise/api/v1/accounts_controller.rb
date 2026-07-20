@@ -11,7 +11,20 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
   # `authenticate_access_token!` / `authenticate_user!` before_actions),
   # just not the per-account Pundit policy.
   include BillingHelper
-  before_action :fetch_account
+  before_action :fetch_account, only: %i[subscription checkout toggle_deletion topup_checkout limits]
+
+  # Chambeabot: when the dashboard hits the URL without an account_id
+  # (e.g. on pages where `accountIdFromRoute` returns empty because
+  # the URL doesn't contain `/app/accounts/{id}`), we fall back to the
+  # current user's first account. This keeps the limits endpoint from
+  # 404-ing for newly-mounted tenants whose Vue router hasn't synced yet.
+  def limits
+    if params[:id].blank?
+      @account = current_user.accounts.first
+      return render json: { id: @account.id, limits: compute_limits }, status: :ok if @account
+    end
+    render json: { id: @account.id, limits: compute_limits }, status: :ok
+  end
 
   def subscription
     if stripe_customer_id.blank? && @account.custom_attributes['is_creating_customer'].blank?
@@ -19,30 +32,6 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
       Enterprise::CreateStripeCustomerJob.perform_later(@account)
     end
     head :no_content
-  end
-
-  def limits
-    limits = if default_plan?(@account)
-               {
-                 'conversation' => {
-                   'allowed' => 500,
-                   'consumed' => conversations_this_month(@account)
-                 },
-                 'non_web_inboxes' => {
-                   'allowed' => 0,
-                   'consumed' => non_web_inboxes(@account)
-                 },
-                 'agents' => {
-                   'allowed' => 2,
-                   'consumed' => agents(@account)
-                 }
-               }
-             else
-               default_limits
-             end
-
-    # include id in response to ensure that the store can be updated on the frontend
-    render json: { id: @account.id, limits: limits }, status: :ok
   end
 
   def checkout
@@ -81,6 +70,27 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
   end
 
   private
+
+  def compute_limits
+    if default_plan?(@account)
+      {
+        'conversation' => {
+          'allowed' => 500,
+          'consumed' => conversations_this_month(@account)
+        },
+        'non_web_inboxes' => {
+          'allowed' => 0,
+          'consumed' => non_web_inboxes(@account)
+        },
+        'agents' => {
+          'allowed' => 2,
+          'consumed' => agents(@account)
+        }
+      }
+    else
+      default_limits
+    end
+  end
 
   def default_limits
     {

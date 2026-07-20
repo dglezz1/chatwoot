@@ -605,6 +605,13 @@ Rails.application.routes.draw do
             post :topup_checkout
           end
         end
+
+        # Chambeabot: fallback for when the dashboard calls /enterprise/api/v1/limits
+        # without an account_id (e.g. on routes where `accountIdFromRoute` returns
+        # empty because the URL doesn't contain `/app/accounts/{id}`). The
+        # Enterprise::Api::V1::AccountsController#limits action falls back to
+        # the current_user's first account when params[:id] is blank.
+        get 'limits', to: 'accounts#limits'
       end
     end
 
