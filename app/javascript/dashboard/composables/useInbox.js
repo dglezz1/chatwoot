@@ -116,6 +116,13 @@ export const useInbox = (inboxId = null) => {
     );
   });
 
+  const isAnOpenwaChannel = computed(() => {
+    return (
+      channelType.value === INBOX_TYPES.WHATSAPP &&
+      whatsAppAPIProvider.value === 'openwa'
+    );
+  });
+
   const is360DialogWhatsAppChannel = computed(() => {
     return (
       channelType.value === INBOX_TYPES.WHATSAPP &&
@@ -152,6 +159,7 @@ export const useInbox = (inboxId = null) => {
     isATwilioChannel,
     isAWebWidgetInbox,
     isAWhatsAppChannel,
+    isAnOpenwaChannel,
     isAMicrosoftInbox,
     isAGoogleInbox,
     isATwilioWhatsAppChannel,
