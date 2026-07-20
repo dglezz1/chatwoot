@@ -36,7 +36,12 @@ COPY openwa/ ./
 
 # Install ALL deps (including dev: @nestjs/cli, typescript) needed for build.
 # NODE_ENV not yet production, so dev deps install correctly.
-RUN npm ci && npm run build && ls -la dist/main* && cat dist/main.js | head -3
+# Use `npm install` (not `npm ci`) — the openwa/package-lock.json has drifted
+# out of sync with package.json (missing optional native packages like sharp's
+# per-platform binaries), and `npm ci` aborts hard on that. We intentionally
+# don't keep the lockfile pristine inside this vendor subtree: the top-level
+# chatwoot project is the source of truth, openwa is vendored.
+RUN npm install --no-audit --no-fund --include=dev && npm run build && ls -la dist/main* && cat dist/main.js | head -3
 
 # Persist data dirs as Railway volumes.
 RUN mkdir -p /app/data/sessions /app/data/media /app/data/plugins /app/data/engine \
