@@ -83,26 +83,35 @@ class Webhooks::OpenwaController < ActionController::API
 
   def find_channel(session_id)
     # Look up the channel whose provider_config carries the incoming
-    # session_id. Use the simple `where(...).find_by(...)` form so the
-    # query is a single SQL hit instead of a tap+where iteration.
-    # The old `tap` + `where.find` shape was correct but opaque; this
-    # is the same logic in one expression.
-    Channel::Whatsapp.find_by(
+    # session_id. We use a dual strategy: first try the fast JSONB @>
+    # match (provider_config @> '{"session_id":"..."}'), then fall back
+    # to a Ruby-side scan if the JSONB lookup returns nil.
+    #
+    # Chambeabot: the JSONB containment match can silently return nil in
+    # two cases we've actually hit:
+    #   (a) provider_config got re-serialized in a way that breaks the
+    #       @> operator (e.g. nested keys, key ordering, or a non-canonical
+    #       cast) — Rails adapter doesn't raise, just returns nil.
+    #   (b) there is a second openwa channel in the same account (e.g. an
+    #       old test2 / qr-test leftover) that gets picked up by the query
+    #       path before the @> filter has a chance to discriminate.
+    # In both cases, the Ruby-side scan over `where(provider: 'openwa')`
+    # is bounded (small N, one openwa channel per real inbox) and
+    # reliable. The first call short-circuits on the common path so we
+    # don't pay the scan cost on every webhook.
+    matched = Channel::Whatsapp.find_by(
       provider: 'openwa',
       provider_config: { session_id: session_id }
     )
-  rescue StandardError
-    # Chambeabot: the JSONB containment match (`provider_config @> '{"session_id":"..."}'`)
-    # silently returns nil when the JSONB column got re-serialized in a way that breaks
-    # the @> operator (we saw this happen after PATCH /inboxes/11 to swap session_id — the
-    # query would return 404 even though the row clearly has the matching session_id in its
-    # JSON. The Rails adapter doesn't raise, it just returns nil, which is impossible to tell
-    # apart from "no such channel" at the controller level). Fall back to a Ruby-side filter
-    # so a re-link always finds the channel even when the @> operator is unreliable.
+    return matched if matched
+
     fallback = Channel::Whatsapp.where(provider: 'openwa').to_a.find do |c|
       c.provider_config.is_a?(Hash) && c.provider_config['session_id'] == session_id
     end
-    Rails.logger.warn "[OPENWA] find_channel JSONB query returned nil; fell back to Ruby scan for session=#{session_id} result=#{fallback&.id}" if fallback
+    Rails.logger.warn(
+      "[OPENWA] find_channel JSONB miss; Ruby fallback session=#{session_id} " \
+        "result=#{fallback&.id} scanned=#{Channel::Whatsapp.where(provider: 'openwa').count}"
+    )
     fallback
   end
 
