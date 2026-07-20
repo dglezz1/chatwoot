@@ -8,16 +8,9 @@ max_threads_count = ENV.fetch('RAILS_MAX_THREADS', 5)
 min_threads_count = ENV.fetch('RAILS_MIN_THREADS') { max_threads_count }
 threads min_threads_count, max_threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests.
+# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 #
-# Hardcoded to 3000 to match the Procfile's `bundle exec rails server -p 3000`
-# and the internal service-to-service URLs in OPENWA_WEBHOOK_HOST /
-# OPENWA_API_BASE_URL. The previous `port ENV.fetch('PORT', 3000)` honored
-# Railway's hidden PORT=8080 env var, which silently moved Puma off 3000 and
-# broke the OpenWA → Chatwoot webhook (OpenWA was POSTing to :3000 and got
-# connection refused). See git log for "fix(puma): hardcode port 3000" for
-# the incident.
-port 3000
+port ENV.fetch('PORT', 3000)
 
 # Specifies the `environment` that Puma will run in.
 #
