@@ -67,13 +67,15 @@ class Webhooks::OpenwaController < ActionController::API
   end
 
   def find_channel(session_id)
-    Channel::Whatsapp.find_by(provider: 'openwa').tap do |ch|
-      return ch if ch && ch.provider_config['session_id'] == session_id
-    end
-
-    Channel::Whatsapp.where(provider: 'openwa').find do |ch|
-      ch.provider_config['session_id'] == session_id
-    end
+    # Look up the channel whose provider_config carries the incoming
+    # session_id. Use the simple `where(...).find_by(...)` form so the
+    # query is a single SQL hit instead of a tap+where iteration.
+    # The old `tap` + `where.find` shape was correct but opaque; this
+    # is the same logic in one expression.
+    Channel::Whatsapp.find_by(
+      provider: 'openwa',
+      provider_config: { session_id: session_id }
+    )
   end
 
   def valid_signature?(raw_body, channel)
