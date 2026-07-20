@@ -25,10 +25,25 @@ class Webhooks::OpenwaController < ActionController::API
     )
 
     if adapted.present?
+      # Chambeabot: WhatsApp's multi-device protocol marks every message
+      # leaving any device on the authenticated account as `fromMe: true`,
+      # which OpenWA surfaces as the `message.sent` event. That event fires
+      # for BOTH (a) messages the operator sent from this very web session
+      # and (b) messages the account owner sent from another phone on the
+      # same WhatsApp account. We cannot tell them apart from the event
+      # alone, but we don't have to: the IncomingMessageService's
+      # `find_message_by_source_id` short-circuits any source_id that was
+      # already persisted by `SendOnWhatsappService` (case a), so the
+      # remaining `message.sent` payloads that survive the lookup are
+      # guaranteed to be multidevice messages that need to be created as
+      # `incoming` for the contact. Marking them `outgoing_echo: true`
+      # would store them as `outgoing` from the agent and hide them from
+      # the operator's inbox — exactly what was happening with the
+      # customer's real "hey" messages.
       Whatsapp::IncomingMessageService.new(
         inbox: channel.inbox,
         params: adapted.deep_symbolize_keys,
-        outgoing_echo: params[:event].to_s.start_with?('message.sent')
+        outgoing_echo: false
       ).perform
 
       # For LID-only chats (private numbers), persist the full chatId on the
