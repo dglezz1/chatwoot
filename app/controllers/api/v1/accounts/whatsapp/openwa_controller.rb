@@ -79,6 +79,21 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
     # hostname; fall back to FRONTEND_URL (public) only when no internal host is
     # configured (dev / non-Railway deploys).
     chatwoot_host = ENV['OPENWA_WEBHOOK_HOST'].presence || ENV['FRONTEND_URL'].presence || 'http://localhost:3000'
+
+    # Chambeabot: refuse to register a webhook that points to the wrong
+    # port for the Railway private network. Without this guard a typo in
+    # OPENWA_WEBHOOK_HOST (e.g. 8080 when Puma listens on 3000) silently
+    # breaks delivery — OpenWA returns 201 on registration, retries 3
+    # times, and the operator only finds out hours later when no messages
+    # are arriving in the inbox.
+    if (port_mismatch = openwa_webhook_port_mismatch?(chatwoot_host))
+      return render json: {
+        error: "OPENWA_WEBHOOK_HOST port mismatch: #{port_mismatch}. " \
+               'Puma listens on 3000 (see config/puma.rb); the webhook ' \
+               'host must use port 3000 for *.railway.internal URLs.'
+      }, status: :unprocessable_entity
+    end
+
     chatwoot_url = "#{chatwoot_host}/webhooks/openwa/#{session_id}"
     body = {
       url: chatwoot_url,
@@ -92,6 +107,21 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
     else
       render json: { error: response.parsed_response }, status: response.code
     end
+  end
+
+  def openwa_webhook_port_mismatch?(host)
+    require 'uri'
+    parsed = URI.parse(host)
+    return nil if parsed.scheme != 'http'
+    return nil unless parsed.host.to_s.end_with?('.railway.internal')
+    # 3000 is the canonical Puma port (config/puma.rb, Procfile). 8080 is
+    # what Railway injects as PORT — but we hardcode 3000 in the Procfile
+    # and Dockerfile CMD, so Puma never binds 8080 here.
+    return nil if parsed.port == 3000
+
+    "got #{parsed.port.inspect} but expected 3000"
+  rescue URI::InvalidURIError
+    nil
   end
 
   private
