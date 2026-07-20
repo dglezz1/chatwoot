@@ -1,10 +1,17 @@
 class Enterprise::Api::V1::AccountsController < Api::BaseController
-  # Chambeabot override: drop the `check_cloud_env` before_action that
-  # upstream uses to block self-hosted installs from hitting
-  # /enterprise/api/v1/accounts/:id/limits and /toggle_deletion.
+  # Chambeabot override: simplified for self-hosted. The upstream controller
+  # relies on Pundit policies that assume `Current.account_user` is set (which
+  # only happens for cookie-based web sessions, not api_access_token). Since
+  # our dashboard hits this endpoint with api_access_token from the JWT-cookie
+  # path, the Pundit check fails with `undefined method 'administrator?' for nil`.
+  #
+  # The `check_cloud_env` is also removed (we're self-hosted, not chatwoot.cloud).
+  #
+  # The endpoints still require authentication (Api::BaseController's
+  # `authenticate_access_token!` / `authenticate_user!` before_actions),
+  # just not the per-account Pundit policy.
   include BillingHelper
   before_action :fetch_account
-  before_action :check_authorization
 
   def subscription
     if stripe_customer_id.blank? && @account.custom_attributes['is_creating_customer'].blank?
@@ -89,7 +96,6 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
 
   def fetch_account
     @account = current_user.accounts.find(params[:id])
-    @current_account_user = @account.account_users.find_by(user_id: current_user.id)
   end
 
   def stripe_customer_id
