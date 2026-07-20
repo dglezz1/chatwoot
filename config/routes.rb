@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  # Chambeabot: ActionCable was missing a mount in this fork, which made
+  # /cable 404 and broke all real-time updates (new messages, typing
+  # indicators, presence). Rails 7 normally mounts ActionCable.server
+  # automatically when the engine is loaded, but the way Chatwoot
+  # configures routes drops the default mount. Re-add it explicitly.
+  mount ActionCable.server => '/cable'
+
   # AUTH STARTS
   mount_devise_token_auth_for 'User', at: 'auth', controllers: {
     confirmations: 'devise_overrides/confirmations',
