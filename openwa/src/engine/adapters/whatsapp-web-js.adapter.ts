@@ -387,6 +387,24 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         this.logger.log(`Using auth timeout ${authTimeoutMs}ms`);
       }
 
+      // Chambeabot: whatsapp-web.js 1.34.x hardcodes a Mac User-Agent
+      // (`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) ... Chrome/101.0.4951.67`) in
+      // src/util/Constants.js as the `DefaultOptions.userAgent`. That gets pushed into
+      // Puppeteer via `--user-agent=...` AND re-applied via `page.setUserAgent(...)` on
+      // every launch, so just adding `--user-agent=...` in Puppeteer args is overwritten
+      // the moment the WAWeb page mounts. The Mac UA made every Railway-deployed session
+      // show as "Chrome on Mac" in the user's WhatsApp → Linked Devices list, which is
+      // a fingerprint mismatch vs. the actual Linux Chromium and a known tripwire for
+      // WhatsApp's anti-abuse heuristics.
+      //
+      // Override with a Linux/X11 UA matching the bundled Chromium (Puppeteer 24.x ships
+      // Chromium ~141) so the navigator.userAgent ↔ Chromium version pair stays consistent.
+      // `userAgent: false` is also set so whatsapp-web.js's `page.setUserAgent(...)` call
+      // short-circuits and lets our Puppeteer arg win (otherwise it overwrites us with the
+      // hardcoded Mac string every page-load).
+      const linuxUserAgent =
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+        'Chrome/146.0.0.0 Safari/537.36';
       this.client = new Client({
         authStrategy: new LocalAuth({
           clientId: this.config.sessionId,
@@ -407,6 +425,12 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
           // whatsapp-web.js fall back to Puppeteer's bundled Chromium.
           ...(this.config.puppeteer?.executablePath ? { executablePath: this.config.puppeteer.executablePath } : {}),
         },
+        // Override the hardcoded Mac UA with a Linux UA matching the bundled Chromium.
+        // `userAgent: false` would also work, but an explicit Linux UA is more predictable
+        // across Puppeteer / Chromium upgrades (it pins the navigator-reported Chrome
+        // version to a real stable value rather than whatever Chromium happens to self-
+        // report today).
+        userAgent: linuxUserAgent,
         ...(authTimeoutMs !== undefined ? { authTimeoutMs } : {}),
         ...(proxyAuthentication ? { proxyAuthentication } : {}),
         ...(versionPin ?? {}),
