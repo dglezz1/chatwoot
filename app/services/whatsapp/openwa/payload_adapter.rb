@@ -204,7 +204,15 @@ class Whatsapp::Openwa::PayloadAdapter
   #   1. chat_id ends in @c.us        → use it directly (e.g. "5215512345678@c.us")
   #   2. chat_id ends in @lid         → multi-device mode ("número privado");
   #                                     fall back to sibling fields that may
-  #                                     carry the real phone number.
+  #                                     carry the real phone number, OR use
+  #                                     the LID's own digit payload as a
+  #                                     last-resort identifier (WhatsApp
+  #                                     sometimes only sends the LID, no
+  #                                     underlying phone, in which case we
+  #                                     use the LID as the contact's
+  #                                     identifier and persist the full
+  #                                     chatId on additional_attributes
+  #                                     for the reply path).
   #   3. anything else                → try as bare identifier; return if ≥ 8 digits.
   def resolve_phone(chat_id, data)
     suffix = chat_id.to_s.split('@').last
@@ -231,6 +239,14 @@ class Whatsapp::Openwa::PayloadAdapter
         digits = c.to_s.gsub(/\D/, '')
         return digits if digits.length >= 8
       end
+
+      # Fallback: no sibling field had a real phone, but the chat_id itself
+      # contains a long numeric payload (the LID). Use those digits as the
+      # contact's identifier so the message isn't silently dropped. The
+      # webhook controller persists the full @lid chatId on
+      # contact.additional_attributes['openwa_chat_id'] for the reply path.
+      digits = chat_id.to_s.gsub(/\D/, '')
+      return digits if digits.length >= 8
       nil
     end
 
