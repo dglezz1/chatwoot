@@ -15,9 +15,23 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
   # POST /api/v1/accounts/:account_id/whatsapp/openwa/sessions
   # body: { name: "my-session" }
   def create_session
-    response = openwa_api_post('/api/sessions', { name: params.require(:name) })
+    name = params.require(:name)
+    response = openwa_api_post('/api/sessions', { name: name })
     if response.success?
       render json: response.parsed_response, status: :created
+    elsif response.code == 409
+      # Chambeabot: OpenWA returns 409 "Session name already exists" if a
+      # session with this name is already registered (typically from a
+      # previous inbox creation that wasn't fully torn down). For UX, we
+      # find the existing session and return it as if we just created it —
+      # the inbox flow can proceed and link to the same session id.
+      existing = find_existing_session_by_name(name)
+      if existing
+        render json: existing, status: :ok
+      else
+        render json: { error: response.parsed_response, code: 'session_name_taken' },
+               status: :conflict
+      end
     else
       render json: { error: response.parsed_response }, status: response.code
     end
@@ -154,5 +168,15 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
 
   def openwa_api_delete(path)
     HTTParty.delete("#{openwa_api_base}#{path}", headers: openwa_headers, timeout: 30)
+  end
+
+  def find_existing_session_by_name(name)
+    list = openwa_api_get('/api/sessions')
+    return nil unless list.success?
+
+    parsed = list.parsed_response
+    return nil unless parsed.is_a?(Array)
+
+    parsed.find { |s| s['name'].to_s.casecmp(name.to_s).zero? }
   end
 end

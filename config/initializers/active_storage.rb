@@ -45,10 +45,37 @@ module ActiveStorageProxyRangeLimit
   end
 end
 
+# Chambeabot: the upstream `ActiveStorage::Representations::BaseController`
+# (`set_representation`) calls `@blob.representation(variation_key).processed`,
+# which raises `ActiveStorage::FileNotFoundError` (Errno::ENOENT under the
+# hood) when the underlying file is missing on disk. That's a 500 by default.
+# With the new persistent Railway Volume mounted on /app/storage, *new* uploads
+# survive redeploys — but *old* blobs whose files were created in the
+# ephemeral container filesystem are now orphans. They show up in the
+# dashboard (cached references from previous renders) and 500 on every load.
+#
+# Catch the FileNotFoundError and return 404 — the image just doesn't exist
+# anymore, no point in surfacing a 500 to the user.
+module ActiveStorageOrphanRepresentationFallback
+  private
+
+  def set_representation
+    @representation = @blob.representation(params[:variation_key]).processed
+  rescue ActiveSupport::MessageVerifier::InvalidSignature
+    head :not_found
+  rescue ActiveStorage::FileNotFoundError, Errno::ENOENT => e
+    Rails.logger.warn "[ActiveStorage] Orphan representation for blob #{@blob&.key}: #{e.class}: #{e.message}"
+    head :not_found
+  end
+end
+
 Rails.application.config.to_prepare do
   unless ActiveStorage::DirectUploadsController < ActiveStorageDirectUploadMetadataFilter
     ActiveStorage::DirectUploadsController.prepend(ActiveStorageDirectUploadMetadataFilter)
   end
 
   ActiveStorage::Streaming.prepend(ActiveStorageProxyRangeLimit) unless ActiveStorage::Streaming < ActiveStorageProxyRangeLimit
+
+  ActiveStorage::Representations::BaseController.prepend(ActiveStorageOrphanRepresentationFallback) \
+    unless ActiveStorage::Representations::BaseController < ActiveStorageOrphanRepresentationFallback
 end
