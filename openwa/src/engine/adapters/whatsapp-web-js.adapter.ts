@@ -965,13 +965,51 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     this.ensureReady();
     // wwebjs accepts neutral `<phone>@c.us` WIDs directly as mentionedJidList, so no de-normalization
     // is needed. Omit the options object entirely when none are given to keep today's send behavior.
-    const msg = await this.sendResolved(chatId, to =>
+    let msg = await this.sendResolved(chatId, to =>
       mentions?.length ? this.client!.sendMessage(to, text, { mentions }) : this.client!.sendMessage(to, text),
     );
+    // Chambeabot: wwebjs's `sendMessage` returns `undefined` (no error thrown) when the
+    // recipient's chat isn't in the local cache — typical for LID-only "private-number"
+    // contacts right after a sync restart, or for any JID wwebjs hasn't seen yet. Without
+    // this guard, OpenWA would then trip on `msg.id._serialized` with a TypeError that
+    // surfaces to the agent dashboard as a generic "Internal server error". The fix is to
+    // force wwebjs to (re)load the chat via `getChatById` (which queries the WA backend
+    // and populates the local cache) and retry the send once before giving up.
+    if (!msg) {
+      const warmed = await this.warmChatCache(chatId);
+      if (warmed) {
+        msg = await this.sendResolved(chatId, to =>
+          mentions?.length ? this.client!.sendMessage(to, text, { mentions }) : this.client!.sendMessage(to, text),
+        );
+      }
+    }
+    if (!msg) {
+      throw new Error(
+        `Failed to send message to ${chatId}: wwebjs returned no message object. ` +
+          'The recipient chat may not be in the local cache yet — try again after a few ' +
+          'seconds once the contact list resyncs.',
+      );
+    }
     return {
       id: msg.id._serialized,
       timestamp: msg.timestamp,
     };
+  }
+
+  // Best-effort: force wwebjs to (re)load the chat for a JID by calling `getChatById`
+  // (which queries the WA backend and populates the local cache) and clearing any stale
+  // resolved-id cache. Returns true if the chat was successfully warmed, false otherwise.
+  private async warmChatCache(chatId: string): Promise<boolean> {
+    try {
+      this.resolvedSendIds.delete(chatId);
+      const chat = await this.client!.getChatById(chatId);
+      return !!chat;
+    } catch (error) {
+      this.logger.warn(
+        `warmChatCache failed for ${chatId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
   }
 
   async sendImageMessage(chatId: string, media: MediaInput): Promise<MessageResult> {
