@@ -2,11 +2,6 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
   # Chambeabot override: drop the `check_cloud_env` before_action that
   # upstream uses to block self-hosted installs from hitting
   # /enterprise/api/v1/accounts/:id/limits and /toggle_deletion.
-  #
-  # The cloud check is a SaaS-business check, not a security one. We
-  # self-host Chambeabot, so we want the limits endpoint to actually
-  # return real usage data so the dashboard's enterprise UI doesn't
-  # render a permanent "Not found" on the limits page.
   include BillingHelper
   before_action :fetch_account
   before_action :check_authorization
@@ -87,11 +82,17 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
       'agents' => {
         'allowed' => @account.usage_limits[:agents],
         'consumed' => agents(@account)
-      }
+      },
+      'captain' => @account.usage_limits[:captain]
     }
   end
 
-  def default_plan?(account)
-    account.usage_limits[:plan] == 'default'
+  def fetch_account
+    @account = current_user.accounts.find(params[:id])
+    @current_account_user = @account.account_users.find_by(user_id: current_user.id)
+  end
+
+  def stripe_customer_id
+    @account.custom_attributes['stripe_customer_id']
   end
 end
