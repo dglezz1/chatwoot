@@ -80,7 +80,16 @@ class Api::V1::Accounts::Whatsapp::OpenwaController < Api::V1::Accounts::BaseCon
   def register_webhook
     session_id = params[:id]
     channel = Channel::Whatsapp.find_by(provider: 'openwa', account_id: @current_account.id)
-    secret = SecureRandom.hex(16)
+    # Chambeabot: prefer the env-level OPENWA_WEBHOOK_SECRET so the secret
+    # stays in sync with what the crm-web (webhook controller) and the
+    # OpenWA side both have configured. Without this, the per-channel
+    # secret drifts every time the operator runs the "re-link" flow
+    # (the channel gets a new SecureRandom.hex, the OpenWA side has
+    # the old one, and every webhook delivery fails with Invalid
+    # signature). The env var is also the single source of truth for
+    # `valid_signature?` in Webhooks::OpenwaController, so they MUST
+    # match for HMAC validation to succeed.
+    secret = ENV['OPENWA_WEBHOOK_SECRET'].presence || SecureRandom.hex(16)
 
     # Persist secret on channel
     if channel
